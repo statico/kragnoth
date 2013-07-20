@@ -1,6 +1,6 @@
 #!/usr/bin/env coffee
 
-browserify = require 'browserify-middleware'
+browserifyExpress = require 'browserify-express'
 bundleUp = require 'bundle-up'
 express = require 'express'
 http = require 'http'
@@ -51,7 +51,13 @@ bundleUp app, "#{ __dirname }/lib/assets", {
   minifyJs: not DEBUG
 }
 
-app.use '/lib', browserify('./lib')
+app.use browserifyExpress
+  entry: "#{ __dirname }/lib/index.coffee"
+  watch: "#{ __dirname }/lib"
+  mount: "/lib.js"
+  verbose: DEBUG
+  minify: not DEBUG
+  bundle_opts: { debug: DEBUG }
 
 app.configure ->
   app.use express.static path.join "#{ __dirname }/public"
@@ -65,8 +71,12 @@ app.locals
 # HANDLERS
 # -------------------------------------------------------------------------
 
-app.get '/', (req, res) ->
-  res.render 'index'
+app.get '/', (req, res) -> res.render 'index'
+
+for i in require('./lib/index').APPS
+  do (i) ->
+    app.get "/#{ i }", (req, res) ->
+      res.render 'index', entryPoint: i
 
 # -------------------------------------------------------------------------
 # SERVER

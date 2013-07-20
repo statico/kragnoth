@@ -3,3 +3,19 @@ extends base
 block content
 
   h1 Krag'noth
+
+append scripts
+  script(src="/lib.js")
+  if locals.entryPoint
+    script
+      (function() {
+        var id = "#{ entryPoint }";
+        if (id in window) {
+          window[id]();
+        } else {
+          document.body.innerHTML += "window." + id + " not found";
+        }
+      })();
+  else
+    p (no entryPoint)
+
