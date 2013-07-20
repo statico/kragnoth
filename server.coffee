@@ -2,15 +2,18 @@
 
 browserifyExpress = require 'browserify-express'
 bundleUp = require 'bundle-up'
+dnode = require 'dnode'
 express = require 'express'
 http = require 'http'
 humanize = require 'humanize-plus'
 loremIpsum = require 'lorem-ipsum'
 moment = require 'moment'
 path = require 'path'
+shoe = require 'shoe'
 stylus = require 'stylus'
 
 util = require './lib/util'
+rpc = require './lib/rpc'
 
 PORT = parseInt(util.requireEnv('PORT', 8000), 10)
 
@@ -82,5 +85,10 @@ for i in require('./lib/index').APPS
 # SERVER
 # -------------------------------------------------------------------------
 
-http.createServer(app).listen PORT, ->
-  console.log "Server listening on http://localhost:#{ PORT }"
+rpcHandler = shoe (stream) ->
+  d = dnode(rpc)
+  d.pipe(stream).pipe(d)
+
+server = http.createServer(app)
+server.listen PORT, -> console.log "Server listening on http://localhost:#{ PORT }"
+rpcHandler.install server, '/dnode'
