@@ -24,7 +24,11 @@
     "browserify-express": "~0.1.1",
     "lorem-ipsum": "~0.1.1",
     "dnode": "~1.0.5",
-    "shoe": "0.0.11"
+    "shoe": "0.0.11",
+    "sockjs": "~0.3.7",
+    "rbytes": "~1.0.0",
+    "sockjs-client": "~0.1.3",
+    "charm": "~0.1.2"
   },
   "engines": {
     "node": "0.8.x",
