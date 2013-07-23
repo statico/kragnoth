@@ -3,7 +3,10 @@
 sjsc = require 'sockjs-client'
 charm = require('charm')()
 
+{ClientWorld} = require './lib/world'
+
 client = null
+world = new ClientWorld()
 
 charm.pipe process.stdout
 charm.reset()
@@ -25,11 +28,13 @@ tryConnecting = ->
     message = JSON.parse raw
     return if not message?.length == 2
     [cmd, data] = message
-    return if cmd != 'fullstate'
+    return if cmd != 'state'
+
+    world.loadFromState data
 
     charm.erase 'screen'
-    for id, state of data
-      charm.position state.x, state.y
+    for agent in world.getAgents()
+      charm.position agent.location.x, agent.location.y
       charm.write '@'
 
   client.on 'error', (err) ->
