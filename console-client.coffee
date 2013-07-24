@@ -21,6 +21,7 @@ class View
   draw: (world) ->
     @charm.erase 'screen'
 
+    # Draw a character for each agent.
     world.map.foreach (p) =>
       @charm.position p.x + 1, p.y + 1
       switch world.map.get(p)
@@ -35,11 +36,18 @@ class View
         when Map.Cells.HALLWAY
           @charm.foreground('black').write('.')
 
+    # Always draw alive agents on top of dead ones.
+    world.agents.sort (a, b) -> if a.isAlive() then 1 else -1
+
+    # Draw a character for each agent.
     for agent in world.agents
       @charm.position agent.location.x + 1, agent.location.y + 1
+
+      # All dead agents are a corpse.
       if not agent.isAlive()
         @charm.foreground('black').write 'x'
         continue
+
       switch agent.type
         when 'drone' then @charm.foreground('white').write 'o'
         when 'mosquito' then @charm.foreground('red').write 'M'

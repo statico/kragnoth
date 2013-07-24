@@ -50,14 +50,24 @@ class GameMaster
   doRound: ->
     @_doBeforeRound()
 
+    # Agents' turns happen in random order, but all player agents act first.
+    # We might need First Strike later.
     for list in [@world.getPlayerAgents(), @world.getNonPlayerAgents()]
       for agent in list
+
+        # "Speed" is the number of rounds before an agent gets a turn. E.g.
+        # a speed of 6 is twice as slow as a speed of 3.
         if agent.id not of @_turnsSinceLast
-          @_turnsSinceLast[agent.id] = roll(1, agent.speed) # Stagger the starting turn.
+          # If this is the first time we've seen the agent, give it a random
+          # offset to stagger the movement of a lot of monsters in a room. It
+          # looks more organic.
+          @_turnsSinceLast[agent.id] = roll(1, agent.speed)
         if --@_turnsSinceLast[agent.id] > 0
           continue
+
         if agent.isAlive()
           agent.doTurn this, this.world
+
         @_turnsSinceLast[agent.id] = agent.speed
 
     @_doAfterRound()
@@ -72,6 +82,7 @@ class GameMaster
     map = @world.map
     {agent, type, options} = command
 
+    # Right now, agents can only perform one command per turn.
     @_turnsTakenThisRound[agent.id] ?= 0
     if ++@_turnsTakenThisRound[agent.id] > 1
       agent.log "You tried performing more than one turn"
@@ -95,7 +106,7 @@ class GameMaster
 
         # Check other agents.
         for other in @world.getAgents()
-          if agent != other and newLocation.equals(other.location)
+          if other.isAlive() and agent != other and newLocation.equals(other.location)
             agent.log "You can't move there, #{ other.toString() } is in the way"
             return
 
@@ -219,6 +230,7 @@ class ServerWorld
   findPathAroundAgents: (start, end) ->
     return @map.findPath start, end, (p) =>
       for _, agent of @_allAgents
+        continue if not agent.isAlive()
         return false if p.equals agent.location
       return true
 
