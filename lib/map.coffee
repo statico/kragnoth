@@ -111,6 +111,9 @@ class Map
     return Math.abs(dx) + Math.abs(dy)
 
   findPath: (start, end) ->
+    ASSERT start instanceof Vec2
+    ASSERT end instanceof Vec2
+
     results = aStar
       start: start
       isEnd: (p) -> p.equals(end)
@@ -120,14 +123,14 @@ class Map
       distance: (p1, p2) => @euclideanDistance p1, p2
       heuristic: (p) => @rectilinearDistance p, end
       hash: (p) -> p.toString()
-    return results.path
+
+    # Remove start.
+    path = results.path
+    path?.splice 0, 1
+    return path
 
   pathDistance: (start, end) ->
-    path = @findPath(start, end)
-    if path
-      return path.length - 1
-    else
-      return -1
+    return @findPath(start, end)?.length
 
   getRandomWalkableLocation: ->
     while true

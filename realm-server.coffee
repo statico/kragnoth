@@ -23,7 +23,7 @@ update = ->
   for id, conn of clients
     conn.write JSON.stringify ['state', state]
 
-setInterval update, 1000
+setInterval update, 300
 
 server = http.createServer()
 socket.installHandlers server, prefix: '/socket'

@@ -36,9 +36,14 @@ class View
           @charm.foreground('black').write('.')
 
     for agent in world.agents
-      @charm.foreground View.Colors[agent.id % View.Colors.length]
       @charm.position agent.location.x + 1, agent.location.y + 1
-      @charm.write '@'
+      if not agent.isAlive()
+        @charm.foreground('black').write 'x'
+        continue
+      switch agent.type
+        when 'drone' then @charm.foreground('white').write 'o'
+        when 'mosquito' then @charm.foreground('red').write 'M'
+        else @charm.write '?'
 
     return
 
