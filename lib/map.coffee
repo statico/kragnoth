@@ -61,6 +61,21 @@ class Map
       cb new Vec2(x, y)
     return
 
+  toArray: ->
+    result = []
+    @foreach (p) =>
+      result[p.y] ?= []
+      result[p.y][p.x] = @get(p)
+    return result
+
+  @fromArray: (arr) ->
+    result = new Map(new Vec2(arr[0].length, arr.length))
+    for y in [0...arr.length]
+      row = arr[y]
+      for x in [0...row.length]
+        result.set new Vec2(x, y), row[x]
+    return result
+
   # ---------------------------------------------------------------------------
   # Traversal
   # ---------------------------------------------------------------------------

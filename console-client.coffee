@@ -2,6 +2,7 @@
 
 sjsc = require 'sockjs-client'
 
+{Map} = require './lib/map'
 {ClientWorld} = require './lib/game'
 
 class View
@@ -19,10 +20,27 @@ class View
 
   draw: (world) ->
     @charm.erase 'screen'
-    for agent in world.getAgents()
+
+    world.map.foreach (p) =>
+      @charm.position p.x + 1, p.y + 1
+      switch world.map.get(p)
+        when Map.Cells.EMPTY
+          @charm.write(' ')
+        when Map.Cells.WALL
+          @charm.foreground('black').write('#')
+        when Map.Cells.ROOM
+          @charm.foreground('black').write('.')
+        when Map.Cells.DOOR
+          @charm.foreground('black').write('_')
+        when Map.Cells.HALLWAY
+          @charm.foreground('black').write('.')
+
+    for agent in world.agents
       @charm.foreground View.Colors[agent.id % View.Colors.length]
-      @charm.position agent.location.x, agent.location.y
+      @charm.position agent.location.x + 1, agent.location.y + 1
       @charm.write '@'
+
+    return
 
   teardown: ->
     @charm.cursor(true).erase('line')

@@ -80,8 +80,8 @@ class GameMaster
   getFullState: ->
     return {
       agents: (agent.getState() for agent in @world.getAgents())
+      map: @world.map.toArray()
     }
-
 
 # ---------------------------------------------------------------------------
 # WORLD
@@ -135,16 +135,14 @@ class ServerWorld
 class ClientWorld
 
   constructor: ->
-    @_tick = null
-    @_agents = null
+    @agents = null
+    @map = null
 
   loadFromState: (data) ->
-    @_agents = []
+    @agents = []
     for agent in data.agents
-      @_agents.push agent
-
-  getAgents: ->
-    return @_agents
+      @agents.push agent
+    @map = Map.fromArray data.map
 
 # ---------------------------------------------------------------------------
 # AGENTS
