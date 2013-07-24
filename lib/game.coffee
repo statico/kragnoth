@@ -3,6 +3,15 @@
 
 ASSERT = (cond) -> throw new Error('Assertion failed') if not cond
 
+shuffle = (arr) ->
+  i = arr.length
+  while --i
+    j = Math.floor(Math.random() * (i + 1))
+    temp = arr[i]
+    arr[i] = arr[j]
+    arr[j] = temp
+  return
+
 # ---------------------------------------------------------------------------
 # GAMEMASTER
 # ---------------------------------------------------------------------------
@@ -169,7 +178,7 @@ class DummyAgent extends ServerAgent
 
   doTurn: (gm, world) ->
     neighbors = world.map.diagonalNeighbors @location
-    neighbors.sort -> Math.random() - 0.5
+    shuffle neighbors
     for n in neighbors
       if world.map.isWalkable n
         gm.attempt new Command(this, Command.Types.MOVE, newLocation: n)
