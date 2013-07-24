@@ -6,6 +6,8 @@ sjsc = require 'sockjs-client'
 
 class View
 
+  @Colors: ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white']
+
   constructor: ->
     @charm = require('charm')()
     @charm.pipe(process.stdout)
@@ -18,6 +20,7 @@ class View
   draw: (world) ->
     @charm.erase 'screen'
     for agent in world.getAgents()
+      @charm.foreground View.Colors[agent.id % View.Colors.length]
       @charm.position agent.location.x, agent.location.y
       @charm.write '@'
 

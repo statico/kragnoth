@@ -160,6 +160,7 @@ class ServerAgent
 
   getState: ->
     return {
+      id: @id
       location: @location.getXY()
     }
 
