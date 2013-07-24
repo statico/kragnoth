@@ -38,10 +38,11 @@ class Command
 class GameMaster
 
   constructor: ->
-    @world = new ServerWorld(new Vec2(20, 10))
+    @world = new ServerWorld(new Vec2(20, 7))
     @world.addNonPlayerAgent new Mosquito()
-    for i in [0..10]
-      @world.addNonPlayerAgent new Drone()
+    for i in [0..20]
+      drone = @world.addNonPlayerAgent new Drone()
+      drone.hp = 0 if Math.random() > 0.5
 
   doRound: ->
     @_doBeforeRound()
@@ -82,7 +83,7 @@ class GameMaster
         ASSERT newLocation instanceof Vec2
 
         # Check distance.
-        distance = map.pathDistance(oldLocation, newLocation)
+        distance = @world.pathDistanceAroundAgents(oldLocation, newLocation)
         if distance > 1
           agent.log "You tried moving too far (distance = #{ distance })"
           return
@@ -108,7 +109,7 @@ class GameMaster
         ASSERT targetLocation instanceof Vec2
 
         # Check distance.
-        distance = map.pathDistance(agent.location, targetLocation)
+        distance = @world.pathDistanceAroundAgents(agent.location, targetLocation)
         if distance > 1
           agent.log "You can't attack that far away"
           return
@@ -134,14 +135,15 @@ class GameMaster
           return
 
         # Do the damage.
-        agent.log "You hit the #{ target.type }!"
-        target.log "The #{ target.type } hits!"
+        target.log "The #{ agent.type } hits!"
         damage = agent.calculatePhysicalAttack()
         target.hp -= damage
         if target.hp <= 0
           target.hp = 0
           target.log "You die!"
-          agent.log "You kill the #{ target.type }!"
+          agent.log "You hit the #{ target.type }! The #{ target.type } dies!"
+        else
+          agent.log "You hit the #{ target.type }!"
         return
 
       else
@@ -209,6 +211,14 @@ class ServerWorld
   getNonPlayerAgents: ->
     return (agent for id, agent of @_nonPlayerAgents)
 
+  findPathAroundAgents: (start, end) ->
+    return @map.findPath start, end, (p) =>
+      for _, agent of @_allAgents
+        return false if p.equals agent.location
+      return true
+
+  pathDistanceAroundAgents: (start, end) ->
+    return @findPathAroundAgents(start, end)?.length
 
 class ClientWorld
 
@@ -275,7 +285,15 @@ class Agent
     console.log "#{ @toString() } #{ text }"
 
   toString: ->
-    return "[#{ @constructor.name } ##{ @id }]"
+    return "[#{ @constructor.name } #{ if not @isAlive() then '(dead) ' else '' }##{ @id }]"
+
+  wander: (gm, world) ->
+    neighbors = world.map.diagonalNeighbors @location
+    shuffle neighbors
+    for n in neighbors
+      gm.attempt new Command(this, Command.Types.MOVE, newLocation: n)
+      break
+    return
 
 class ClientAgent extends Agent
 
@@ -293,13 +311,14 @@ class Drone extends Agent
 
   type: 'drone'
 
+  constructor: ->
+    super()
+    @hp = 2
+
+  log: -> # Mute.
+
   doTurn: (gm, world) ->
-    neighbors = world.map.diagonalNeighbors @location
-    shuffle neighbors
-    for n in neighbors
-      gm.attempt new Command(this, Command.Types.MOVE, newLocation: n)
-      break
-    return
+    @wander gm, world
 
 # ---------------------------------------------------------------------------
 # Mosquito
@@ -319,13 +338,15 @@ class Mosquito extends Agent
       @targetId = null if not target.isAlive()
 
     if not @targetId
-      possibles = (agent for agent in world.getAgents() when agent.type == 'drone')
-      return if not possibles.length
+      possibles = (agent for agent in world.getAgents() when agent.type == 'drone' and agent.isAlive())
+      if not possibles.length
+        @wander gm, world
+        return
       shuffle possibles
       @targetId = possibles[0].id
 
     target = world.getAgent @targetId
-    path = world.map.findPath @location, target.location
+    path = world.findPathAroundAgents @location, target.location
     if path.length > 1
       gm.attempt new Command(this, Command.Types.MOVE, newLocation: path[0])
     else

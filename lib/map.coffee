@@ -110,7 +110,7 @@ class Map
     dy = b.y - a.y
     return Math.abs(dx) + Math.abs(dy)
 
-  findPath: (start, end) ->
+  findPath: (start, end, filter = (-> true)) ->
     ASSERT start instanceof Vec2
     ASSERT end instanceof Vec2
 
@@ -119,7 +119,7 @@ class Map
       isEnd: (p) -> p.equals(end)
       neighbor: (p) =>
         neighbors = @diagonalNeighbors p
-        return (n for n in neighbors when @isWalkable(n))
+        return (n for n in neighbors when @isWalkable(n) and filter(n))
       distance: (p1, p2) => @euclideanDistance p1, p2
       heuristic: (p) => @rectilinearDistance p, end
       hash: (p) -> p.toString()
