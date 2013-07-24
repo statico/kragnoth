@@ -4,11 +4,10 @@ http = require 'http'
 sockjs = require 'sockjs'
 
 {Vec2} = require 'justmath'
-{ServerWorld,Dummy} = require './lib/game'
+{GameMaster} = require './lib/game'
 
 clients = {}
-world = new ServerWorld(new Vec2(10, 10))
-world.addAgent new Dummy()
+gm = new GameMaster()
 
 socket = sockjs.createServer()
 socket.on 'connection', (conn) ->
@@ -19,7 +18,8 @@ socket.on 'connection', (conn) ->
     delete clients[conn.id]
 
 update = ->
-  state = world.simulate()
+  gm.doRound()
+  state = gm.getFullState()
   for id, conn of clients
     conn.write JSON.stringify ['state', state]
 

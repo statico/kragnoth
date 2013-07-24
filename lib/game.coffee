@@ -1,6 +1,88 @@
 {Vec2} = require 'justmath'
 {Map} = require './map'
 
+ASSERT = (cond) -> throw new Error('Assertion failed') if not cond
+
+# ---------------------------------------------------------------------------
+# GAMEMASTER
+# ---------------------------------------------------------------------------
+
+class Command
+
+  @Types:
+    MOVE: 0
+
+  constructor: (@agent, @type, @options) ->
+
+class GameMaster
+
+  constructor: ->
+    @world = new ServerWorld(new Vec2(40, 10))
+    for i in [0..10]
+      @world.addNonPlayerAgent new DummyAgent()
+
+  doRound: ->
+    @_doBeforeRound()
+
+    for agent in @world.getPlayerAgents()
+      agent.doTurn this, this.world
+
+    for agent in @world.getNonPlayerAgents()
+      agent.doTurn this, this.world
+
+    @_doAfterRound()
+
+  _doBeforeRound: ->
+    # agent ID -> number
+    @_turnsTaken = {}
+
+  _doAfterRound: ->
+
+  attempt: (command) ->
+    map = @world.map
+    {agent, type, options} = command
+
+    @_turnsTaken[agent.id] ?= 0
+    if ++@_turnsTaken[agent.id] > 1
+      console.warn "#{ agent.toString() } tried performing more than one turn"
+      return
+
+    switch type
+      when Command.Types.MOVE
+        {newLocation} = options
+        oldLocation = agent.location
+
+        # Check input.
+        ASSERT oldLocation instanceof Vec2
+        ASSERT newLocation instanceof Vec2
+
+        # Check distance.
+        distance = map.pathDistance(oldLocation, newLocation)
+        if distance > 1
+          console.warn "#{ agent.toString() } tried moving too far (distance = #{ distance })"
+          return
+
+        # Check other agents.
+        for other in @world.getAgents()
+          if agent != other and newLocation.equals(agent.location)
+            console.warn "#{ agent.toString() } tried to move on top of #{ other.toString() }"
+            return
+
+        # OK to move!
+        agent.location = newLocation.copy()
+
+      else
+        console.warn "#{ agent.toString() } tried invalid command: #{ type }"
+        return
+
+    return
+    
+  getFullState: ->
+    return {
+      agents: (agent.getState() for agent in @world.getAgents())
+    }
+
+
 # ---------------------------------------------------------------------------
 # WORLD
 # ---------------------------------------------------------------------------
@@ -8,37 +90,47 @@
 class ServerWorld
 
   constructor: (@size) ->
-    @_tick = 0
+    @map = new Map(@size)
+    @map.populateWithOneBigRoom()
 
-    @_ground = new Map(@size)
-    @_ground.foreach (p) =>
-      {x, y} = p
-      if x == 0 or x == @size.x - 1 or y == 0 or y == @size.y - 1
-        value = 1
-      else
-        value = 0
-      @_ground.set new Vec2(x, 0), value
+    @_nextAgentId = 1
 
-    @_agents = []
+    @_playerAgents = {}
+    @_nonPlayerAgents = {}
 
-  getTick: ->
-    return @_tick
+  addNonPlayerAgent: (agent) ->
+    @_addAgent @_nonPlayerAgents, (agent)
 
-  simulate: ->
-    @tick++
+  addPlayerAgent: (agent) ->
+    @_addAgent @_playerAgents, (agent)
 
-    agents = []
-    for agent in @_agents
-      agent.simulate(this)
-      agents.push agent.getState()
+  _addAgent: (obj, agent) ->
+    agent.id = @_nextAgentId++
 
-    return {
-      tick: @_tick
-      agents: agents
-    }
+    others = @getAgents()
+    doesntOverlapOthers = (p) ->
+      for other in others
+        if p.equals other.location
+          return false
+      return true
 
-  addAgent: (agent) ->
-    @_agents.push agent
+    while agent.location == null
+      p = @map.getRandomWalkableLocation()
+      if doesntOverlapOthers(p)
+        agent.location = p
+
+    obj[agent.id] = agent
+    return agent
+
+  getAgents: ->
+    return @getPlayerAgents().concat @getNonPlayerAgents()
+
+  getPlayerAgents: ->
+    return (agent for id, agent of @_playerAgents)
+
+  getNonPlayerAgents: ->
+    return (agent for id, agent of @_nonPlayerAgents)
+
 
 class ClientWorld
 
@@ -47,7 +139,6 @@ class ClientWorld
     @_agents = null
 
   loadFromState: (data) ->
-    @_tick = data.tick
     @_agents = []
     for agent in data.agents
       @_agents.push agent
@@ -62,20 +153,29 @@ class ClientWorld
 class ServerAgent
 
   constructor: ->
-    @location = new Vec2()
+    @id = null
+    @location = null
 
-  simulate: (world) ->
+  doTurn: (gm, world) ->
 
   getState: ->
     return {
       location: @location.getXY()
     }
 
-class Dummy extends ServerAgent
+  toString: ->
+    return "[ServerAgent #{ @id }]"
 
-  simulate: (world) ->
-    @location.x = Math.floor(Math.random() * world.size.x)
-    @location.y = Math.floor(Math.random() * world.size.y)
+class DummyAgent extends ServerAgent
+
+  doTurn: (gm, world) ->
+    neighbors = world.map.diagonalNeighbors @location
+    neighbors.sort -> Math.random() - 0.5
+    for n in neighbors
+      if world.map.isWalkable n
+        gm.attempt new Command(this, Command.Types.MOVE, newLocation: n)
+        break
+    return
 
 class ClientAgent
 
@@ -86,7 +186,5 @@ class ClientAgent
 # EXPORTS
 # ---------------------------------------------------------------------------
 
-exports.Dummy = Dummy
-exports.ClientAgent = ClientAgent
-exports.ServerWorld = ServerWorld
+exports.GameMaster = GameMaster
 exports.ClientWorld = ClientWorld
