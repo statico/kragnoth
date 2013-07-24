@@ -44,22 +44,27 @@ class GameMaster
       drone = @world.addNonPlayerAgent new Drone()
       drone.hp = 0 if Math.random() > 0.5
 
+    @_turnsTakenThisRound = {}
+    @_turnsSinceLast = {}
+
   doRound: ->
     @_doBeforeRound()
 
-    for agent in @world.getPlayerAgents()
-      if agent.isAlive()
-        agent.doTurn this, this.world
-
-    for agent in @world.getNonPlayerAgents()
-      if agent.isAlive()
-        agent.doTurn this, this.world
+    for list in [@world.getPlayerAgents(), @world.getNonPlayerAgents()]
+      for agent in list
+        if agent.id not of @_turnsSinceLast
+          @_turnsSinceLast[agent.id] = roll(1, agent.speed) # Stagger the starting turn.
+        if --@_turnsSinceLast[agent.id] > 0
+          continue
+        if agent.isAlive()
+          agent.doTurn this, this.world
+        @_turnsSinceLast[agent.id] = agent.speed
 
     @_doAfterRound()
 
   _doBeforeRound: ->
     # agent ID -> number
-    @_turnsTaken = {}
+    @_turnsTakenThisRound = {}
 
   _doAfterRound: ->
 
@@ -67,8 +72,8 @@ class GameMaster
     map = @world.map
     {agent, type, options} = command
 
-    @_turnsTaken[agent.id] ?= 0
-    if ++@_turnsTaken[agent.id] > 1
+    @_turnsTakenThisRound[agent.id] ?= 0
+    if ++@_turnsTakenThisRound[agent.id] > 1
       agent.log "You tried performing more than one turn"
       return
 
@@ -252,6 +257,7 @@ class Agent
     @hp = 1
     @ac = 10
     @melee = 2
+    @speed = 3
 
   isAlive: ->
     return @hp > 0
@@ -279,6 +285,7 @@ class Agent
       hp: @hp
       ac: @ac
       melee: @melee
+      speed: @speed
     }
 
   log: (text) ->
@@ -329,8 +336,9 @@ class Mosquito extends Agent
   type: 'mosquito'
 
   constructor: ->
-    @targetId = null
     super()
+    @targetId = null
+    @speed = 1
 
   doTurn: (gm, world) ->
     if @targetId
