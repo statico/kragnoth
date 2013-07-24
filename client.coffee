@@ -3,7 +3,7 @@
 sjsc = require 'sockjs-client'
 charm = require('charm')()
 
-{ClientWorld} = require './lib/world'
+{ClientWorld} = require './lib/game'
 
 client = null
 world = new ClientWorld()

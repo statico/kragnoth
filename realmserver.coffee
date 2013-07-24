@@ -4,8 +4,7 @@ http = require 'http'
 sockjs = require 'sockjs'
 
 {Vec2} = require 'justmath'
-{ServerWorld} = require './lib/world'
-{Dummy} = require './lib/agents'
+{ServerWorld,Dummy} = require './lib/game'
 
 clients = {}
 world = new ServerWorld(new Vec2(10, 10))
