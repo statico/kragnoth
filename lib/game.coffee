@@ -26,7 +26,7 @@ class Command
 class GameMaster
 
   constructor: ->
-    @world = new ServerWorld(new Vec2(40, 10))
+    @world = new ServerWorld(new Vec2(20, 10))
     for i in [0..10]
       @world.addNonPlayerAgent new DummyAgent()
 
@@ -73,9 +73,14 @@ class GameMaster
 
         # Check other agents.
         for other in @world.getAgents()
-          if agent != other and newLocation.equals(agent.location)
-            console.warn "#{ agent.toString() } tried to move on top of #{ other.toString() }"
+          if agent != other and newLocation.equals(other.location)
+            #console.warn "#{ agent.toString() } tried to move on top of #{ other.toString() }"
             return
+
+        # Check that area is walkable.
+        if not map.isWalkable newLocation
+          #console.warn "#{ agent.toString() } tried to move to unwalkable position"
+          return
 
         # OK to move!
         agent.location = newLocation.copy()
@@ -180,9 +185,8 @@ class DummyAgent extends ServerAgent
     neighbors = world.map.diagonalNeighbors @location
     shuffle neighbors
     for n in neighbors
-      if world.map.isWalkable n
-        gm.attempt new Command(this, Command.Types.MOVE, newLocation: n)
-        break
+      gm.attempt new Command(this, Command.Types.MOVE, newLocation: n)
+      break
     return
 
 class ClientAgent
