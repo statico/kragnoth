@@ -130,6 +130,9 @@ class Map
     dy = b.y - a.y
     return Math.abs(dx) + Math.abs(dy)
 
+  areAdjacent: (a, b) =>
+    return @euclideanDistance(a, b) < 1.5
+
   findPath: (start, end, filter = (-> true)) ->
     ASSERT start instanceof Vec2
     ASSERT end instanceof Vec2

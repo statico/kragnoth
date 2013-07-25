@@ -102,9 +102,8 @@ class GameMaster
         ASSERT newLocation instanceof Vec2
 
         # Check distance.
-        distance = @world.pathDistanceAroundAgents(oldLocation, newLocation)
-        if distance > 1
-          agent.log "You tried moving too far (distance = #{ distance })"
+        if not @world.map.areAdjacent(oldLocation, newLocation)
+          agent.log "You tried moving too far"
           return
 
         # Check that the area is walkable and no agents are present.
@@ -122,8 +121,7 @@ class GameMaster
         ASSERT targetLocation instanceof Vec2
 
         # Check distance.
-        distance = @world.pathDistanceAroundAgents(agent.location, targetLocation)
-        if distance > 1
+        if not @world.map.areAdjacent(agent.location, targetLocation)
           agent.log "You can't attack that far away"
           return
 
@@ -376,11 +374,18 @@ class Mosquito extends Agent
       @targetId = possibles[0][1].id
 
     target = world.getAgent @targetId
-    path = world.findPathAroundAgents @location, target.location
-    if path.length > 1
-      gm.attempt new Command(this, Command.Types.MOVE, newLocation: path[0])
-    else
+    if world.map.areAdjacent(@location, target.location)
       gm.attempt new Command(this, Command.Types.MELEE, targetLocation: target.location)
+    else
+      # Find a walkable path to the target.
+      path = world.findPathAroundAgents @location, target.location
+      if path?.length
+        # Take the first step in the path
+        gm.attempt new Command(this, Command.Types.MOVE, newLocation: path[0])
+      else
+        # Must be trying to pass through another agent.
+        @wander gm, world, false
+        @targetId = false
     return
 
 # ---------------------------------------------------------------------------
