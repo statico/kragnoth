@@ -41,7 +41,7 @@ class GameMaster
 
   constructor: ->
     # Temporary world -- box with a mosquito and a bunch of drones.
-    @world = new ServerWorld(new Vec2(20, 7))
+    @world = new ServerWorld(new Vec2(50, 15))
     @world.addNonPlayerAgent new Mosquito()
     for i in [0..20]
       drone = @world.addNonPlayerAgent new Drone()
@@ -179,13 +179,17 @@ class ServerWorld
 
   constructor: (@size) ->
     @map = new Map(@size)
-    @map.populateWithOneBigRoom()
+    @map.fillWithLotsOfRooms()
 
     @_nextAgentId = 1
 
     @_allAgents = {}
     @_playerAgents = {}
     @_nonPlayerAgents = {}
+
+  # ---------------------------------------------------------------------------
+  # Agent Management
+  # ---------------------------------------------------------------------------
 
   addNonPlayerAgent: (agent) ->
     @_addAgent @_nonPlayerAgents, (agent)
@@ -223,6 +227,10 @@ class ServerWorld
 
   getNonPlayerAgents: ->
     return (agent for id, agent of @_nonPlayerAgents)
+
+  # ---------------------------------------------------------------------------
+  # Pathfinding
+  # ---------------------------------------------------------------------------
 
   findPathAroundAgents: (start, end) ->
     return @map.findPath start, end, (p) =>

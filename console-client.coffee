@@ -28,13 +28,13 @@ class View
         when Map.Cells.EMPTY
           @charm.write(' ')
         when Map.Cells.WALL
-          @charm.foreground('black').write('#')
+          @charm.foreground('black').write('^')
         when Map.Cells.ROOM
           @charm.foreground('black').write('.')
         when Map.Cells.DOOR
           @charm.foreground('black').write('_')
         when Map.Cells.HALLWAY
-          @charm.foreground('black').write('.')
+          @charm.foreground('black').write('#')
 
     # Always draw alive agents on top of dead ones.
     world.agents.sort (a, b) -> if a.isAlive() then 1 else -1
