@@ -261,15 +261,32 @@ class Map
 
     return rooms
 
+  _findPotentialHallway: (start, end) ->
+    # Adding a little Perlin Simplex noise makes the hallways a little more
+    # natural and windy.
+    noise = new perlin.SimplexNoise random: -> 0.123 # Seed the noise.
+
+    results = aStar
+      start: start
+      isEnd: (p) -> p.equals(end)
+      neighbor: (p) =>
+        neighbors = @cardinalNeighbors p
+        return (n for n in neighbors when @isDiggable(n))
+      distance: (p1, p2) => @euclideanDistance p1, p2
+      heuristic: (p) =>
+        if @get(end) == Map.Cells.HALLWAY
+          return 0
+        else
+          return @rectilinearDistance(p, end) + Math.floor(noise.noise(start.x/15, start.y/15) * 20)
+      hash: (p) -> p.toString()
+
+    return results.path
+
   _makeHallways: (rooms, density = 600) ->
     L = 0
     R = @size.x - 1
     T = 0
     B = @size.y - 1
-
-    # Adding a little Perlin Simplex noise makes the hallways a little more
-    # natural and windy.
-    noise = new perlin.SimplexNoise random: -> 0.123 # Seed the noise.
 
     filter = (node) =>
       #@set new Vec2(node.x, node.y), 5 if !node.value
@@ -309,25 +326,8 @@ class Map
       a = findDoors(room)
       b = findDoors(other)
       continue if not a.length or not b.length
-      door1 = a[0]
-      door2 = b[0]
 
-      results = aStar
-        start: door1
-        isEnd: (p) -> p.equals(door2)
-        neighbor: (p) =>
-          neighbors = @diagonalNeighbors p
-          return (n for n in neighbors when @isDiggable(n))
-        distance: (p1, p2) => @euclideanDistance p1, p2
-        heuristic: (p) =>
-          if @get(door2) == Map.Cells.HALLWAY
-            return 0
-          else
-            return @rectilinearDistance(p, door2) + Math.floor(noise.noise(door1.x/15, door1.y/15) * 20)
-        hash: (p) -> p.toString()
-
-      #path = @map.astar x1, y1, x2, y2, filter, heuristic
-      for p in results.path
+      for p in @_findPotentialHallway a[0], b[0]
         @set p, Map.Cells.HALLWAY
         hallwayPoints.push p
 
@@ -350,23 +350,7 @@ class Map
       if not possible
         throw new Error("Could not create hallway #{ i } from #{ door1 }")
 
-      results = aStar
-        start: door1
-        isEnd: (p) -> p.equals(door2)
-        neighbor: (p) =>
-          neighbors = @diagonalNeighbors p
-          return (n for n in neighbors when @isDiggable(n))
-        distance: (p1, p2) => @euclideanDistance p1, p2
-        heuristic: (p) =>
-          if @get(door2) == Map.Cells.HALLWAY
-            return 0
-          else
-            return @rectilinearDistance(p, door2) + Math.floor(noise.noise(door1.x/15, door1.y/15) * 20)
-        hash: (p) -> p.toString()
-
-      #path = @map.astar x1, y1, x2, y2, filter, heuristic
-      for p in results.path
-        console.log 'XXX', p
+      for p in @_findPotentialHallway door1, door2
         @set p, Map.Cells.HALLWAY
 
 exports.Map = Map
