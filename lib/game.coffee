@@ -259,11 +259,10 @@ class ClientWorld
 
 class Agent
 
-  type: null
-
   constructor: ->
     @id = null
     @location = null
+    @type = @constructor.name.toLowerCase()
 
     @level = 1
     @hp = 1
@@ -304,7 +303,7 @@ class Agent
     console.log "#{ @toString() } #{ text }"
 
   toString: ->
-    return "[#{ @constructor.name } #{ if not @isAlive() then '(dead) ' else '' }##{ @id }]"
+    return "[#{ @type } #{ if not @isAlive() then '(dead) ' else '' }##{ @id }]"
 
   wander: (gm, world) ->
     neighbors = world.map.diagonalNeighbors @location
@@ -328,8 +327,6 @@ class ClientAgent extends Agent
 
 class Drone extends Agent
 
-  type: 'drone'
-
   constructor: ->
     super()
     @hp = 2
@@ -344,8 +341,6 @@ class Drone extends Agent
 # ---------------------------------------------------------------------------
 
 class Mosquito extends Agent
-
-  type: 'mosquito'
 
   constructor: ->
     super()
