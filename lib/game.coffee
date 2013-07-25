@@ -34,6 +34,7 @@ class Command
   @Types:
     MOVE: 'MOVE'
     MELEE: 'MELEE'
+    REST: 'REST'
 
   constructor: (@agent, @type, @options) ->
 
@@ -155,6 +156,10 @@ class GameMaster
           agent.log "You hit the #{ target.type }! The #{ target.type } dies!"
         else
           agent.log "You hit the #{ target.type }!"
+        return
+
+      when Command.Types.REST
+        # Nothing to do yet. Maybe heal when we get to that.
         return
 
       else
@@ -316,6 +321,9 @@ class Agent
     return "[#{ @type } #{ if not @isAlive() then '(dead) ' else '' }##{ @id }]"
 
   wander: (gm, world, blind = false) ->
+    if roll(1, 3) == 1
+      gm.attempt new Command(this, Command.Types.REST, newLocation: n)
+      return
     neighbors = world.map.diagonalNeighbors @location
     shuffle neighbors
     for n in neighbors
