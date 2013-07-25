@@ -104,15 +104,9 @@ class GameMaster
           agent.log "You tried moving too far (distance = #{ distance })"
           return
 
-        # Check other agents.
-        for other in @world.getAgents()
-          if other.isAlive() and agent != other and newLocation.equals(other.location)
-            agent.log "You can't move there, #{ other.toString() } is in the way"
-            return
-
-        # Check that area is walkable.
-        if not map.isWalkable newLocation
-          agent.log "You can't move there"
+        # Check that the area is walkable and no agents are present.
+        if not @world.isWalkable agent, newLocation
+          agent.log "You can't move there - something's in the way"
           return
 
         # OK to move!
@@ -237,6 +231,13 @@ class ServerWorld
   pathDistanceAroundAgents: (start, end) ->
     return @findPathAroundAgents(start, end)?.length
 
+  isWalkable: (agent, location) ->
+    return false if not @map.isPassable location
+    for other in @getAgents()
+      if other.isAlive() and agent != other and location.equals(other.location)
+        return false
+    return true
+
 class ClientWorld
 
   constructor: ->
@@ -305,10 +306,11 @@ class Agent
   toString: ->
     return "[#{ @type } #{ if not @isAlive() then '(dead) ' else '' }##{ @id }]"
 
-  wander: (gm, world) ->
+  wander: (gm, world, blind = false) ->
     neighbors = world.map.diagonalNeighbors @location
     shuffle neighbors
     for n in neighbors
+      continue if not blind and not world.isWalkable this, n
       gm.attempt new Command(this, Command.Types.MOVE, newLocation: n)
       break
     return
@@ -334,7 +336,7 @@ class Drone extends Agent
   log: -> # Mute.
 
   doTurn: (gm, world) ->
-    @wander gm, world
+    @wander gm, world, true
 
 # ---------------------------------------------------------------------------
 # Mosquito
@@ -355,7 +357,7 @@ class Mosquito extends Agent
     if not @targetId
       possibles = (agent for agent in world.getAgents() when agent.type == 'drone' and agent.isAlive())
       if not possibles.length
-        @wander gm, world
+        @wander gm, world, false
         return
       shuffle possibles
       @targetId = possibles[0].id

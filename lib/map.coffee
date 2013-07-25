@@ -119,7 +119,7 @@ class Map
       isEnd: (p) -> p.equals(end)
       neighbor: (p) =>
         neighbors = @diagonalNeighbors p
-        return (n for n in neighbors when @isWalkable(n) and filter(n))
+        return (n for n in neighbors when @isPassable(n) and filter(n))
       distance: (p1, p2) => @euclideanDistance p1, p2
       heuristic: (p) => @rectilinearDistance p, end
       hash: (p) -> p.toString()
@@ -138,13 +138,13 @@ class Map
         Math.floor(Math.random() * @size.x),
         Math.floor(Math.random() * @size.y)
       )
-      return p if @isWalkable(p)
+      return p if @isPassable(p)
 
   # ---------------------------------------------------------------------------
   # Properties
   # ---------------------------------------------------------------------------
 
-  isWalkable: (p) ->
+  isPassable: (p) ->
     return @get(p) in [Map.Cells.EMPTY, Map.Cells.ROOM, Map.Cells.DOOR, Map.Cells.HALLWAY]
 
   # ---------------------------------------------------------------------------
