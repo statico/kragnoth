@@ -41,7 +41,7 @@ class GameMaster
 
   constructor: ->
     # Temporary world -- box with a mosquito and a bunch of drones.
-    @world = new ServerWorld(new Vec2(50, 15))
+    @world = new ServerWorld(new Vec2(65, 22))
     @world.addNonPlayerAgent new Mosquito()
     for i in [0..20]
       drone = @world.addNonPlayerAgent new Drone()

@@ -91,14 +91,23 @@ class Map
   # Traversal
   # ---------------------------------------------------------------------------
 
-  cardinalNeighbors: (p) ->
+  northSouthNeighbors: (p) ->
+    ASSERT p instanceof Vec2
+    ret = []
+    if p.y > 0 then ret.push new Vec2(p.x, p.y-1)
+    if p.y < @size.y-1 then ret.push new Vec2(p.x, p.y+1)
+    return ret
+
+  eastWestNeighbors: (p) ->
     ASSERT p instanceof Vec2
     ret = []
     if p.x > 0 then ret.push new Vec2(p.x-1, p.y)
-    if p.y > 0 then ret.push new Vec2(p.x, p.y-1)
     if p.x < @size.x-1 then ret.push new Vec2(p.x+1, p.y)
-    if p.y < @size.y-1 then ret.push new Vec2(p.x, p.y+1)
     return ret
+
+  cardinalNeighbors: (p) ->
+    ASSERT p instanceof Vec2
+    return @northSouthNeighbors(p).concat @eastWestNeighbors(p)
 
   diagonalNeighbors: (p) ->
     ASSERT p instanceof Vec2
@@ -154,6 +163,20 @@ class Map
   # ---------------------------------------------------------------------------
   # Properties
   # ---------------------------------------------------------------------------
+
+  areCellTypes: (points, types) ->
+    for p in points
+      if @get(p) not in types
+        return false
+    return true
+
+  # Returns 'h' for horizontal wall, 'v' for vertical, 'x' for anything else.
+  wallType: (p) ->
+    if @areCellTypes(@eastWestNeighbors(p), [Map.Cells.WALL, Map.Cells.DOOR])
+      return 'h'
+    if @areCellTypes(@northSouthNeighbors(p), [Map.Cells.WALL, Map.Cells.DOOR])
+      return 'v'
+    return 'x'
 
   isPassable: (p) ->
     return @get(p) in [Map.Cells.ROOM, Map.Cells.DOOR, Map.Cells.HALLWAY]

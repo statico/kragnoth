@@ -22,19 +22,23 @@ class View
     @charm.erase 'screen'
 
     # Draw a character for each agent.
+    @charm.foreground('black')
     world.map.foreach (p) =>
       @charm.position p.x + 1, p.y + 1
       switch world.map.get(p)
         when Map.Cells.EMPTY
-          @charm.write(' ')
+          @charm.write ' '
         when Map.Cells.WALL
-          @charm.foreground('black').write('^')
+          switch world.map.wallType p
+            when 'h' then @charm.write '-'
+            when 'v' then @charm.write '|'
+            else @charm.write '+'
         when Map.Cells.ROOM
-          @charm.foreground('black').write('.')
+          @charm.write '.'
         when Map.Cells.DOOR
-          @charm.foreground('black').write('_')
+          @charm.write '_'
         when Map.Cells.HALLWAY
-          @charm.foreground('black').write('#')
+          @charm.write '#'
 
     # Always draw alive agents on top of dead ones.
     world.agents.sort (a, b) -> if a.isAlive() then 1 else -1
