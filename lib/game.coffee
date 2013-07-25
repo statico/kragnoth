@@ -43,7 +43,7 @@ class GameMaster
     # Temporary world -- box with a mosquito and a bunch of drones.
     @world = new ServerWorld(new Vec2(65, 22))
     @world.addNonPlayerAgent new Mosquito()
-    for i in [0..20]
+    for i in [0..50]
       drone = @world.addNonPlayerAgent new Drone()
       drone.hp = 0 if Math.random() > 0.5
 
@@ -365,13 +365,15 @@ class Mosquito extends Agent
       target = world.getAgent @targetId
       @targetId = null if not target.isAlive()
 
+    # No target? Find the closest.
     if not @targetId
       possibles = (agent for agent in world.getAgents() when agent.type == 'drone' and agent.isAlive())
       if not possibles.length
         @wander gm, world, false
         return
-      shuffle possibles
-      @targetId = possibles[0].id
+      possibles = ([world.map.rectilinearDistance(@location, agent.location), agent] for agent in possibles)
+      possibles.sort (a, b) -> a[0] - b[0]
+      @targetId = possibles[0][1].id
 
     target = world.getAgent @targetId
     path = world.findPathAroundAgents @location, target.location
