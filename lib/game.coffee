@@ -7,6 +7,7 @@ ASSERT = (cond) -> throw new Error('Assertion failed') if not cond
 # UTILS
 # ---------------------------------------------------------------------------
 
+# Shuffle an array in place.
 shuffle = (arr) ->
   return if not arr?.length
   i = arr.length
@@ -17,6 +18,7 @@ shuffle = (arr) ->
     arr[j] = temp
   return
 
+# Roll a number of dice with a number of faces each. E.g., 1d20 = roll(1, 20)
 roll = (numDice, numFaces) ->
   sum = 0
   for [1..numDice]
@@ -38,6 +40,7 @@ class Command
 class GameMaster
 
   constructor: ->
+    # Temporary world -- box with a mosquito and a bunch of drones.
     @world = new ServerWorld(new Vec2(20, 7))
     @world.addNonPlayerAgent new Mosquito()
     for i in [0..20]
