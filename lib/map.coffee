@@ -199,6 +199,7 @@ class Map
     @foreach (p) => @set p, Map.Cells.EMPTY
     rooms = @_makeRooms 300
     @_makeHallways rooms, 1000
+    @_removeDoorsToNowhere rooms
 
   _makeRooms: (density = 300) ->
     L = 0
@@ -303,37 +304,35 @@ class Map
           return @rectilinearDistance(p, end) + Math.floor(noise.noise(start.x/15, start.y/15) * 20)
       hash: (p) -> p.toString()
 
-    return results.path
+    path = results.path
+    path.splice 0, 1 # aStar likes to include the start point, so make sure we
+                     # don't change door cells to hallway cells.
+    return path
+
+  _findDoors: (room) =>
+    [t, r, b, l] = room
+    doors = []
+    for x in [l..r]
+      xt = new Vec2(x, t)
+      if @get(xt) == Map.Cells.DOOR # top wall
+        doors.push xt
+      xb = new Vec2(x, b)
+      if @get(xb) == Map.Cells.DOOR # bottom wall
+        doors.push xb
+    for y in [t..b]
+      ly = new Vec2(l, y)
+      if @get(ly) == Map.Cells.DOOR # left wall
+        doors.push ly
+      ry = new Vec2(r, y)
+      if @get(ry) == Map.Cells.DOOR # right wall
+        doors.push ry
+    return doors
 
   _makeHallways: (rooms, density = 600) ->
     L = 0
     R = @size.x - 1
     T = 0
     B = @size.y - 1
-
-    filter = (node) =>
-      #@set new Vec2(node.x, node.y), 5 if !node.value
-      x = node.value
-      return (!x or x in [Map.Cells.EMPTY, Map.Cells.DOOR, Map.Cells.HALLWAY])
-
-    findDoors = (room) =>
-      [t, r, b, l] = room
-      doors = []
-      for x in [l..r]
-        xt = new Vec2(x, t)
-        if @get(xt) == Map.Cells.DOOR # top wall
-          doors.push xt
-        xb = new Vec2(x, b)
-        if @get(xb) == Map.Cells.DOOR # bottom wall
-          doors.push xb
-      for y in [t..b]
-        ly = new Vec2(l, y)
-        if @get(ly) == Map.Cells.DOOR # left wall
-          doors.push ly
-        ry = new Vec2(r, y)
-        if @get(ry) == Map.Cells.DOOR # right wall
-          doors.push ry
-      return doors
 
     # Connect each room with one other.
     hallwayPoints = []
@@ -346,8 +345,8 @@ class Map
       room = rooms[i]
       other = rooms[j]
 
-      a = findDoors(room)
-      b = findDoors(other)
+      a = @_findDoors(room)
+      b = @_findDoors(other)
       continue if not a.length or not b.length
 
       for p in @_findPotentialHallway a[0], b[0]
@@ -375,5 +374,18 @@ class Map
 
       for p in @_findPotentialHallway door1, door2
         @set p, Map.Cells.HALLWAY
+
+  _hasAdjacentHallway = (p) =>
+    for n in @diagonalNeighbors p
+      if @get(n) == Map.Cells.HALLWAY
+        return true
+    return false
+
+  _removeDoorsToNowhere: (rooms) ->
+    for room in rooms
+      for door in @_findDoors rooms
+        if not @_hasAdjacentHallway door
+          @set door, Map.Cells.WALL
+    return
 
 exports.Map = Map
