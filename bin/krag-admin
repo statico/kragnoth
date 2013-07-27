@@ -20,7 +20,20 @@ class AdminProtocolClient
     @isAuthenticated = false
 
   onMessage: (command, obj) ->
-    console.log 'XXX', "received command #{ command } from #{ @id }"
+    if @isAuthenticated
+      # Do nothing
+    else
+      if command == 'auth'
+        console.log "#{ @toString() } authenticated."
+        @isAuthenticated = true
+        child = children.default
+        @send 'connect-to-realm',
+          url: "ws://#{ child.host }:#{ child.port }/"
+      else
+        @send 'auth-error'
+
+  send: (command, obj={}) ->
+    @conn.send JSON.stringify [command, obj]
 
   onRemoved: ->
 
@@ -34,7 +47,8 @@ nextPort = 8200
 # Graceful shutdown, either through ^C or through nodemon.
 shutdown = ->
   console.log "Killing all realm servers..."
-  for name, child of children
+  for name, obj of children
+    child = obj.process
     console.log "Sending SIGKILL to #{ name } (pid #{ child.pid })"
     child.kill()
   console.log "Giving children a little time to shut down..."
@@ -44,6 +58,7 @@ process.once 'SIGINT', shutdown
 
 # Starts a child process to run a realm.
 startRealm = (name) ->
+  host = '127.0.0.1'
   port = nextPort++
   child = childProcess.spawn(
     "#{ __dirname }/../node_modules/coffee-script/bin/coffee",
@@ -53,7 +68,7 @@ startRealm = (name) ->
     console.log "[Realm #{ name }] #{ ("" + text).trim() }"
   child.stdout.on 'data', log
   child.stderr.on 'data', log
-  children[name] = child
+  children[name] = { host: host, port: port, process: child }
   console.log "Spawned realm server for realm #{ name } on port #{ port }"
 
 # Create one realm by default.
@@ -74,6 +89,7 @@ wsServer.on 'request', (req) ->
   try
     conn = req.accept 'admin-protocol', req.origin
   catch e
+    conn.close()
     console.error e
     return
 
@@ -83,9 +99,9 @@ wsServer.on 'request', (req) ->
 
   conn.on 'message', (message) ->
     try
-      tuple = JSON.parse message
+      tuple = JSON.parse message.utf8Data
     catch e
-      console.error "#{ client.toString() } sent invalid message: #{ e }"
+      console.error "#{ client.toString() } sent invalid message: #{ message.utf8Data }"
       return
     [command, obj] = tuple
     client.onMessage command, obj

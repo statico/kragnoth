@@ -21,6 +21,9 @@ class RealmProtocolClient
   constructor: (@conn) ->
     @id = RealmProtocolClient._NextID++
 
+  onMessage: (command, obj) ->
+    console.log 'XXX', command, obj
+
   toString: ->
     return "<RealmClient #{ @id }>"
 
@@ -51,12 +54,23 @@ wsServer.on 'request', (req) ->
   try
     conn = req.accept 'realm-protocol', req.origin
   catch e
-    console.error e
+    console.error "Protocol error:", e
+    conn.close()
     return
 
   client = new RealmProtocolClient(conn)
   clients[client.id] = client
   console.log "#{ client.toString() } connected."
+
+  conn.on 'message', (message) ->
+    try
+      tuple = JSON.parse message.utf8Data
+    catch e
+      console.error "#{ client.toString() } sent invalid message: #{ message.utf8Data }"
+      return
+    [command, obj] = tuple
+    client.onMessage command, obj
+
   conn.on 'close', ->
     delete clients[client.id]
     console.log "#{ client.toString() } disconnected."
