@@ -3,48 +3,78 @@
 http = require 'http'
 sockjs = require 'sockjs'
 optimist = require 'optimist'
-forever = require 'forever'
 path = require 'path'
+childProcess = require 'child_process'
 
 argv = optimist
+  .options('h', alias: 'host', default: '127.0.0.1')
   .options('p', alias: 'port', default: 8100)
   .argv
 
+class Client
+
+  constructor: (@conn) ->
+    @isAuthenticated = false
+
+  onMessage: (command, obj) ->
+    console.log 'XXX', "received command #{ command } from #{ @conn.id }"
+
+  onRemoved: ->
+
 clients = {}
-realms = {}
+children = {}
+nextPort = 8200
 
 # Graceful shutdown, either through ^C or through nodemon.
 shutdown = ->
   console.log "Killing all realm servers..."
-  emitter = forever.stopAll()
-  emitter.on 'error', (err) ->
-    console.error "Forever error: #{ err }"
-    process.kill process.pid, 'SIGUSR2'
+  for name, child of children
+    console.log "Sending SIGKILL to #{ name } (pid #{ child.pid })"
+    child.kill()
+  console.log "Giving children a little time to shut down..."
+  setTimeout (-> process.kill process.pid, 'SIGUSR2'), 1500
 process.once 'SIGUSR2', shutdown # Nodemon
 process.once 'SIGINT', shutdown
 
-# Default realm.
-realms.default =
-  address: 'localhost:8200'
-  child: forever.start "#{ __dirname }/krag-realm",
-    command: "#{ __dirname }/../node_modules/coffee-script/bin/coffee"
-    options: ['--port=8200']
-    fifo: true
-    verbose: true
+# Starts a child process to run a realm.
+startRealm = (name) ->
+  port = nextPort++
+  child = childProcess.spawn(
+    "#{ __dirname }/../node_modules/coffee-script/bin/coffee",
+    ["#{ __dirname }/krag-realm", "--port=#{ port }", "--name=#{ name }"],
+  )
+  log = (text) ->
+    console.log "[Realm #{ name }] #{ ("" + text).trim() }"
+  child.stdout.on 'data', log
+  child.stderr.on 'data', log
+  children[name] = child
+  console.log "Spawned realm server for realm #{ name } on port #{ port }"
+
+# Create one realm by default.
+startRealm 'default'
 
 socket = sockjs.createServer()
 socket.on 'connection', (conn) ->
   console.log "Client #{ conn.id } connected"
-  clients[conn.id] = conn
+  clients[conn.id] = new Client(conn)
   conn.on 'close', ->
     console.log "Client #{ conn.id } disconnected"
+    clients[conn.id].onRemoved()
     delete clients[conn.id]
+  conn.on 'data', (message) ->
+    try
+      tuple = JSON.parse message
+    catch e
+      console.error "Client #{ conn.id } sent invalid message: #{ e }"
+      return
+    [command, obj] = tuple
+    clients[conn.id].onMessage command, obj
+  return
 
 server = http.createServer()
 socket.installHandlers server, prefix: '/socket'
-server.listen argv.port, '0.0.0.0', ->
-  console.log "Realm Admin listening on port #{ argv.port }"
-  process.title = "#{ path.basename(__filename) } --port=#{ argv.port }"
+server.listen argv.port, argv.host, ->
+  console.log "Realm Admin listening on port #{ argv.host }:#{ argv.port }"
 server.on 'error', (err) ->
   console.error  "Realm Admin error: #{ err }"
   process.exit 1

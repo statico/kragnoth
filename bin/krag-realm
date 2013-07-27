@@ -10,6 +10,7 @@ path = require 'path'
 constants = require '../lib/constants'
 
 argv = optimist
+  .options('h', alias: 'host', default: '127.0.0.1')
   .options('p', alias: 'port')
   .argv
 
@@ -34,9 +35,8 @@ setInterval update, constants.GAME_SPEED
 
 server = http.createServer()
 socket.installHandlers server, prefix: '/socket'
-server.listen argv.port, '0.0.0.0', ->
-  console.log "Realm Server listening on #{ argv.port }"
-  process.title = "#{ path.basename(__filename) } --port=#{ argv.port }"
+server.listen argv.port, argv.host, ->
+  console.log "Realm Server listening on #{ argv.host }:#{ argv.port }"
 server.on 'error', (err) ->
   console.error  "Realm Server error: #{ err }"
   process.exit 1
