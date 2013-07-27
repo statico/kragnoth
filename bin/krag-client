@@ -6,6 +6,11 @@ WebSocketClient = require('websocket').client
 {Map} = require '../lib/map'
 {ClientWorld} = require '../lib/game'
 
+argv = optimist
+  .options('h', alias: 'host', default: '127.0.0.1')
+  .options('p', alias: 'port', default: 8200)
+  .argv
+
 class View
 
   @Colors: ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white']
@@ -91,6 +96,6 @@ tryConnecting = ->
       world.loadFromState data
       view.draw world
 
-  client.connect 'ws://localhost:8200', 'realm-protocol'
+  client.connect "ws://#{ argv.host }:#{ argv.port }", 'realm-protocol'
 
 tryConnecting()
