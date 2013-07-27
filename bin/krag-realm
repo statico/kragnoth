@@ -3,6 +3,7 @@
 http = require 'http'
 sockjs = require 'sockjs'
 optimist = require 'optimist'
+path = require 'path'
 
 {Vec2} = require 'justmath'
 {GameMaster} = require '../lib/game'
@@ -33,5 +34,9 @@ setInterval update, constants.GAME_SPEED
 
 server = http.createServer()
 socket.installHandlers server, prefix: '/socket'
-server.listen argv.port, '0.0.0.0'
-console.log "Realm Server listening on #{ argv.port }"
+server.listen argv.port, '0.0.0.0', ->
+  console.log "Realm Server listening on #{ argv.port }"
+  process.title = "#{ path.basename(__filename) } --port=#{ argv.port }"
+server.on 'error', (err) ->
+  console.error  "Realm Server error: #{ err }"
+  process.exit 1

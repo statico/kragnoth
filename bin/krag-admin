@@ -4,6 +4,7 @@ http = require 'http'
 sockjs = require 'sockjs'
 optimist = require 'optimist'
 forever = require 'forever'
+path = require 'path'
 
 argv = optimist
   .options('p', alias: 'port', default: 8100)
@@ -12,14 +13,22 @@ argv = optimist
 clients = {}
 realms = {}
 
-process.on 'exit', ->
-  forever.stopAll()
+# Graceful shutdown, either through ^C or through nodemon.
+shutdown = ->
+  console.log "Killing all realm servers..."
+  emitter = forever.stopAll()
+  emitter.on 'error', (err) ->
+    console.error "Forever error: #{ err }"
+    process.kill process.pid, 'SIGUSR2'
+process.once 'SIGUSR2', shutdown # Nodemon
+process.once 'SIGINT', shutdown
 
 # Default realm.
 realms.default =
   address: 'localhost:8200'
   child: forever.start "#{ __dirname }/krag-realm",
     command: "#{ __dirname }/../node_modules/coffee-script/bin/coffee"
+    options: ['--port=8200']
     fifo: true
     verbose: true
 
@@ -33,5 +42,9 @@ socket.on 'connection', (conn) ->
 
 server = http.createServer()
 socket.installHandlers server, prefix: '/socket'
-server.listen argv.port, '0.0.0.0'
-console.log "Realm Admin listening on port #{ argv.port }"
+server.listen argv.port, '0.0.0.0', ->
+  console.log "Realm Admin listening on port #{ argv.port }"
+  process.title = "#{ path.basename(__filename) } --port=#{ argv.port }"
+server.on 'error', (err) ->
+  console.error  "Realm Admin error: #{ err }"
+  process.exit 1
