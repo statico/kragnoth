@@ -71,9 +71,11 @@ wsServer = new WebSocketServer(
   autoAcceptConnections: false
 )
 wsServer.on 'request', (req) ->
-  console.log "TODO: verify origin from #{ req.origin }"
-
-  conn = req.accept 'admin-protocol', req.origin
+  try
+    conn = req.accept 'admin-protocol', req.origin
+  catch e
+    console.error e
+    return
 
   client = new AdminProtocolClient(conn)
   clients[client.id] = client
