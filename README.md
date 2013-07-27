@@ -4,6 +4,8 @@
 
 1. Install Node.js
 2. `$ npm install`
+3. `$ npm install -g bower coffee-script nodemon`
+4. `$ bower install`
 
 ## Terms
 
