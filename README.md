@@ -20,8 +20,8 @@
 
 ## Description of tools
 
+* `krag-admin` - Listens for admin channel connections and handles auth, etc.
 * `krag-client` - A console client which connects to a realm server.
 * `krag-dev` - Just some temporary stuff.
 * `krag-realm` - Listens for game channel connections and simulates a single realm (level).
 * `krag-web` - Web client which connects to the admin.
-* `krag-admin` - Listens for admin channel connections and handles auth, etc.

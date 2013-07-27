@@ -4,6 +4,7 @@ fs = require 'fs'
 module.exports =
   COOKIE_SECRET: 'sekrit-cookiez'
   SESSION_SECRET: 'sekret-sezzunz'
+  GAME_SPEED: 300 # ms
 
 # Override constants in a secrets.json file, which isn't checked in.
 secretsFile = "#{ __dirname }/../secrets.json"

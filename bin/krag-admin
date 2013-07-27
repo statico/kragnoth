@@ -3,17 +3,25 @@
 http = require 'http'
 sockjs = require 'sockjs'
 optimist = require 'optimist'
-
-{Vec2} = require 'justmath'
-{GameMaster} = require '../lib/game'
-constants = require '../lib/constants'
+forever = require 'forever'
 
 argv = optimist
-  .options('p', alias: 'port')
+  .options('p', alias: 'port', default: 8100)
   .argv
 
 clients = {}
-gm = new GameMaster()
+realms = {}
+
+process.on 'exit', ->
+  forever.stopAll()
+
+# Default realm.
+realms.default =
+  address: 'localhost:8200'
+  child: forever.start "#{ __dirname }/krag-realm",
+    command: "#{ __dirname }/../node_modules/coffee-script/bin/coffee"
+    fifo: true
+    verbose: true
 
 socket = sockjs.createServer()
 socket.on 'connection', (conn) ->
@@ -23,15 +31,7 @@ socket.on 'connection', (conn) ->
     console.log "Client #{ conn.id } disconnected"
     delete clients[conn.id]
 
-update = ->
-  gm.doRound()
-  state = gm.getFullState()
-  for id, conn of clients
-    conn.write JSON.stringify ['state', state]
-
-setInterval update, constants.GAME_SPEED
-
 server = http.createServer()
 socket.installHandlers server, prefix: '/socket'
 server.listen argv.port, '0.0.0.0'
-console.log "Realm Server listening on #{ argv.port }"
+console.log "Realm Admin listening on port #{ argv.port }"
