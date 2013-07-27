@@ -4,7 +4,7 @@ http = require 'http'
 sockjs = require 'sockjs'
 
 {Vec2} = require 'justmath'
-{GameMaster} = require './lib/game'
+{GameMaster} = require '../lib/game'
 
 clients = {}
 gm = new GameMaster()

@@ -2,8 +2,8 @@
 
 sjsc = require 'sockjs-client'
 
-{Map} = require './lib/map'
-{ClientWorld} = require './lib/game'
+{Map} = require '../lib/map'
+{ClientWorld} = require '../lib/game'
 
 class View
 
