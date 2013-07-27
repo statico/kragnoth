@@ -1,25 +1,31 @@
 #!/usr/bin/env coffee
 
 http = require 'http'
-sockjs = require 'sockjs'
 optimist = require 'optimist'
 path = require 'path'
 childProcess = require 'child_process'
+WebSocketServer = require('websocket').server
 
 argv = optimist
   .options('h', alias: 'host', default: '127.0.0.1')
   .options('p', alias: 'port', default: 8100)
   .argv
 
-class Client
+class AdminProtocolClient
+
+  @_NextID: 1
 
   constructor: (@conn) ->
+    @id = AdminProtocolClient._NextID++
     @isAuthenticated = false
 
   onMessage: (command, obj) ->
-    console.log 'XXX', "received command #{ command } from #{ @conn.id }"
+    console.log 'XXX', "received command #{ command } from #{ @id }"
 
   onRemoved: ->
+
+  toString: ->
+    return "<AdminClient #{ @id }>"
 
 clients = {}
 children = {}
@@ -53,28 +59,36 @@ startRealm = (name) ->
 # Create one realm by default.
 startRealm 'default'
 
-socket = sockjs.createServer()
-socket.on 'connection', (conn) ->
-  console.log "Client #{ conn.id } connected"
-  clients[conn.id] = new Client(conn)
-  conn.on 'close', ->
-    console.log "Client #{ conn.id } disconnected"
-    clients[conn.id].onRemoved()
-    delete clients[conn.id]
-  conn.on 'data', (message) ->
+httpServer = http.createServer()
+httpServer.listen argv.port, argv.host, ->
+  console.log "Realm Admin listening on port #{ argv.host }:#{ argv.port }"
+httpServer.on 'error', (err) ->
+  console.error  "Realm Admin error: #{ err }"
+  process.exit 1
+
+wsServer = new WebSocketServer(
+  httpServer: httpServer
+  autoAcceptConnections: false
+)
+wsServer.on 'request', (req) ->
+  console.log "TODO: verify origin from #{ req.origin }"
+
+  conn = req.accept 'admin-protocol', req.origin
+
+  client = new AdminProtocolClient(conn)
+  clients[client.id] = client
+  console.log "#{ client.toString() } connected."
+
+  conn.on 'message', (message) ->
     try
       tuple = JSON.parse message
     catch e
-      console.error "Client #{ conn.id } sent invalid message: #{ e }"
+      console.error "#{ client.toString() } sent invalid message: #{ e }"
       return
     [command, obj] = tuple
-    clients[conn.id].onMessage command, obj
-  return
+    client.onMessage command, obj
 
-server = http.createServer()
-socket.installHandlers server, prefix: '/socket'
-server.listen argv.port, argv.host, ->
-  console.log "Realm Admin listening on port #{ argv.host }:#{ argv.port }"
-server.on 'error', (err) ->
-  console.error  "Realm Admin error: #{ err }"
-  process.exit 1
+  conn.on 'close', ->
+    client.onRemoved()
+    delete clients[client.id]
+    console.log "#{ client.toString() } disconnected."

@@ -1,16 +1,8 @@
 # Browser-side web client.
 
-SockJS = require 'sockjs-client'
-
 $ ->
-  console.log 'XXX', SockJS
-  window.SockJS = SockJS
 
-  sock = new SockJS('http://localhost:8100/socket', undefined, debug: true)
-  sock.onopen = ->
-    console.log 'XXX', 'opened'
-  sock.onmessage = (e) ->
-    console.log 'XXX', 'message', e
-  sock.onclose = ->
-    console.log 'XXX', 'closed'
-
+  conn = new WebSocket('ws://localhost:8100', 'admin-protocol')
+  conn.onerror = (err) -> console.log 'YYY', 'error', err
+  conn.onclose = -> console.log 'YYY', 'close'
+  conn.onmessage = (msg) -> console.log 'YYY', 'message', msg

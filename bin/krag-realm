@@ -1,9 +1,9 @@
 #!/usr/bin/env coffee
 
 http = require 'http'
-sockjs = require 'sockjs'
 optimist = require 'optimist'
 path = require 'path'
+WebSocketServer = require('websocket').server
 
 {Vec2} = require 'justmath'
 {GameMaster} = require '../lib/game'
@@ -14,29 +14,45 @@ argv = optimist
   .options('p', alias: 'port')
   .argv
 
+class RealmProtocolClient
+
+  @_NextID: 1
+
+  constructor: (@conn) ->
+    @id = RealmProtocolClient._NextID++
+
+  toString: ->
+    return "<RealmClient #{ @id }>"
+
 clients = {}
 gm = new GameMaster()
-
-socket = sockjs.createServer()
-socket.on 'connection', (conn) ->
-  console.log "Client #{ conn.id } connected"
-  clients[conn.id] = conn
-  conn.on 'close', ->
-    console.log "Client #{ conn.id } disconnected"
-    delete clients[conn.id]
 
 update = ->
   gm.doRound()
   state = gm.getFullState()
-  for id, conn of clients
-    conn.write JSON.stringify ['state', state]
+  for id, client of clients
+    client.conn.send JSON.stringify ['state', state]
+  return
 
 setInterval update, constants.GAME_SPEED
 
-server = http.createServer()
-socket.installHandlers server, prefix: '/socket'
-server.listen argv.port, argv.host, ->
+httpServer = http.createServer()
+httpServer.listen argv.port, argv.host, ->
   console.log "Realm Server listening on #{ argv.host }:#{ argv.port }"
-server.on 'error', (err) ->
+httpServer.on 'error', (err) ->
   console.error  "Realm Server error: #{ err }"
   process.exit 1
+
+wsServer = new WebSocketServer(
+  httpServer: httpServer
+  autoAcceptConnections: false
+)
+wsServer.on 'request', (req) ->
+  console.log "TODO: verify origin from #{ req.origin }"
+  conn = req.accept 'realm-protocol', req.origin
+  client = new RealmProtocolClient(conn)
+  clients[client.id] = client
+  console.log "#{ client.toString() } connected."
+  conn.on 'close', ->
+    delete clients[client.id]
+    console.log "#{ client.toString() } disconnected."
