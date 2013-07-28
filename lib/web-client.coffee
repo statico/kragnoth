@@ -15,6 +15,8 @@ class AdminClientSession extends ClientSession
         @realmSession?.close()
         @realmSession = new RealmClientSession(obj.url)
         @realmSession.connect()
+      when 'message'
+        $('#messages').append $('<div>').text(obj.text)
       else
         console.error "Unknown admin command: #{ command }"
     return

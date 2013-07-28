@@ -24,7 +24,7 @@ class AdminServerSession extends ServerSession
     @isAuthenticated = false
 
   onOpen: ->
-    @send 'message', text: "Welcome! You need to log in."
+    @send 'message', text: "Welcome!"
 
   onCommand: (command, obj) ->
     if @isAuthenticated
