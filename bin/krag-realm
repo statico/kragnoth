@@ -3,41 +3,22 @@
 http = require 'http'
 optimist = require 'optimist'
 path = require 'path'
-WebSocketServer = require('websocket').server
 
 {Vec2} = require 'justmath'
 {GameMaster} = require '../lib/game'
 constants = require '../lib/constants'
+{ClientManager,ProtocolClient} = require '../lib/server'
 
 argv = optimist
   .options('h', alias: 'host', default: '127.0.0.1')
   .options('p', alias: 'port')
+  .options('n', alias: 'name', default: 'unnamed-realm')
   .argv
 
-class RealmProtocolClient
+class RealmProtocolClient extends ProtocolClient
 
-  @_NextID: 1
-
-  constructor: (@conn) ->
-    @id = RealmProtocolClient._NextID++
-
-  onMessage: (command, obj) ->
+  onCommand: (command, obj) ->
     console.log 'XXX', command, obj
-
-  toString: ->
-    return "<RealmClient #{ @id }>"
-
-clients = {}
-gm = new GameMaster()
-
-update = ->
-  gm.doRound()
-  state = gm.getFullState()
-  for id, client of clients
-    client.conn.send JSON.stringify ['state', state]
-  return
-
-setInterval update, constants.GAME_SPEED
 
 httpServer = http.createServer()
 httpServer.listen argv.port, argv.host, ->
@@ -46,31 +27,16 @@ httpServer.on 'error', (err) ->
   console.error  "Realm Server error: #{ err }"
   process.exit 1
 
-wsServer = new WebSocketServer(
-  httpServer: httpServer
-  autoAcceptConnections: false
-)
-wsServer.on 'request', (req) ->
-  try
-    conn = req.accept 'realm-protocol', req.origin
-  catch e
-    console.error "Protocol error:", e
-    conn.close()
-    return
+clients = new ClientManager(RealmProtocolClient, 'realm-protocol')
+clients.attachTo httpServer
 
-  client = new RealmProtocolClient(conn)
-  clients[client.id] = client
-  console.log "#{ client.toString() } connected."
+gm = new GameMaster()
 
-  conn.on 'message', (message) ->
-    try
-      tuple = JSON.parse message.utf8Data
-    catch e
-      console.error "#{ client.toString() } sent invalid message: #{ message.utf8Data }"
-      return
-    [command, obj] = tuple
-    client.onMessage command, obj
+update = ->
+  gm.doRound()
+  state = gm.getFullState()
+  clients.everyone (client) ->
+    client.conn.send JSON.stringify ['state', state]
+  return
 
-  conn.on 'close', ->
-    delete clients[client.id]
-    console.log "#{ client.toString() } disconnected."
+setInterval update, constants.GAME_SPEED

@@ -6,20 +6,20 @@ path = require 'path'
 childProcess = require 'child_process'
 WebSocketServer = require('websocket').server
 
+{ClientManager,ProtocolClient} = require '../lib/server'
+
 argv = optimist
   .options('h', alias: 'host', default: '127.0.0.1')
   .options('p', alias: 'port', default: 8100)
   .argv
 
-class AdminProtocolClient
+class AdminProtocolClient extends ProtocolClient
 
-  @_NextID: 1
-
-  constructor: (@conn) ->
-    @id = AdminProtocolClient._NextID++
+  constructor: (id, conn) ->
+    super id, conn
     @isAuthenticated = false
 
-  onMessage: (command, obj) ->
+  onCommand: (command, obj) ->
     if @isAuthenticated
       # Do nothing
     else
@@ -32,15 +32,6 @@ class AdminProtocolClient
       else
         @send 'auth-error'
 
-  send: (command, obj={}) ->
-    @conn.send JSON.stringify [command, obj]
-
-  onRemoved: ->
-
-  toString: ->
-    return "<AdminClient #{ @id }>"
-
-clients = {}
 children = {}
 nextPort = 8200
 
@@ -81,32 +72,5 @@ httpServer.on 'error', (err) ->
   console.error  "Realm Admin error: #{ err }"
   process.exit 1
 
-wsServer = new WebSocketServer(
-  httpServer: httpServer
-  autoAcceptConnections: false
-)
-wsServer.on 'request', (req) ->
-  try
-    conn = req.accept 'admin-protocol', req.origin
-  catch e
-    conn.close()
-    console.error e
-    return
-
-  client = new AdminProtocolClient(conn)
-  clients[client.id] = client
-  console.log "#{ client.toString() } connected."
-
-  conn.on 'message', (message) ->
-    try
-      tuple = JSON.parse message.utf8Data
-    catch e
-      console.error "#{ client.toString() } sent invalid message: #{ message.utf8Data }"
-      return
-    [command, obj] = tuple
-    client.onMessage command, obj
-
-  conn.on 'close', ->
-    client.onRemoved()
-    delete clients[client.id]
-    console.log "#{ client.toString() } disconnected."
+clients = new ClientManager(AdminProtocolClient, 'admin-protocol')
+clients.attachTo httpServer
