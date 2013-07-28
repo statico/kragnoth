@@ -15,10 +15,18 @@ argv = optimist
   .options('n', alias: 'name', default: 'unnamed-realm')
   .argv
 
+# ---------------------------------------------------------------------------
+# REALM WEBSOCKET PROTOCOL
+# ---------------------------------------------------------------------------
+
 class RealmProtocolClient extends ProtocolClient
 
   onCommand: (command, obj) ->
     console.log 'XXX', command, obj
+
+# ---------------------------------------------------------------------------
+# SERVER
+# ---------------------------------------------------------------------------
 
 httpServer = http.createServer()
 httpServer.listen argv.port, argv.host, ->
@@ -29,6 +37,10 @@ httpServer.on 'error', (err) ->
 
 clients = new ClientManager(RealmProtocolClient, 'realm-protocol')
 clients.attachTo httpServer
+
+# ---------------------------------------------------------------------------
+# GAME MASTER
+# ---------------------------------------------------------------------------
 
 gm = new GameMaster()
 

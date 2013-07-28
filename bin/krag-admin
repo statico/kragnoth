@@ -13,6 +13,10 @@ argv = optimist
   .options('p', alias: 'port', default: 8100)
   .argv
 
+# ---------------------------------------------------------------------------
+# ADMIN WEBSOCKET PROTOCOL
+# ---------------------------------------------------------------------------
+
 class AdminProtocolClient extends ProtocolClient
 
   constructor: (id, conn) ->
@@ -31,6 +35,10 @@ class AdminProtocolClient extends ProtocolClient
           url: "ws://#{ child.host }:#{ child.port }/"
       else
         @send 'auth-error'
+
+# ---------------------------------------------------------------------------
+# REALM SERVER CHILDREN
+# ---------------------------------------------------------------------------
 
 children = {}
 nextPort = 8200
@@ -64,6 +72,10 @@ startRealm = (name) ->
 
 # Create one realm by default.
 startRealm 'default'
+
+# ---------------------------------------------------------------------------
+# SERVER
+# ---------------------------------------------------------------------------
 
 httpServer = http.createServer()
 httpServer.listen argv.port, argv.host, ->
