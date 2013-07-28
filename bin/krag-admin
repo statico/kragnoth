@@ -23,12 +23,16 @@ class AdminServerSession extends ServerSession
     super id, conn
     @isAuthenticated = false
 
+  onOpen: ->
+    @send 'message', text: "Welcome! You need to log in."
+
   onCommand: (command, obj) ->
     if @isAuthenticated
       # Do nothing
     else
       if command == 'auth'
         console.log "#{ @toString() } authenticated."
+        @send 'message', text: "You are logged in."
         @isAuthenticated = true
         child = children.default
         @send 'connect-to-realm',

@@ -1,54 +1,30 @@
 # Browser-side web client.
 
-conn = null
+{ClientSession} = require './client.coffee'
 
-tryConnectingToAdmin = ->
-  url = 'ws://localhost:8100'
-  console.log "Connecting to #{ url }..."
-  conn = new WebSocket(url, 'admin-protocol')
+class AdminClientSession extends ClientSession
 
-  conn.onerror = (err) ->
-    console.error "Admin WebSocket error:", err
+  protocol: 'admin-protocol'
 
-  conn.onopen = ->
-    conn.send JSON.stringify ['auth', {}] # Dumb for now.
+  onOpen: ->
+    @send 'auth'
 
-  conn.onclose = ->
-    console.log "Admin WebSocket closed. Reconnecting."
-    setTimeout tryConnectingToAdmin, 1000
-
-  conn.onmessage = (message) ->
-    try
-      tuple = JSON.parse message.data
-    catch e
-      console.error "Error parsing admin message:", message.data
-      return
-    [command, obj] = tuple
+  onCommand: (command, obj) ->
     switch command
       when 'connect-to-realm'
-        tryConnectingToRealm obj.url
+        @realmSession?.close()
+        @realmSession = new RealmClientSession(obj.url)
+        @realmSession.connect()
       else
         console.error "Unknown admin command: #{ command }"
     return
 
-rconn = null
+class RealmClientSession extends ClientSession
 
-tryConnectingToRealm = (url) ->
-  console.log "Connecting to realm #{ url }..."
-  rconn = new WebSocket(url, 'realm-protocol')
+  protocol: 'realm-protocol'
 
-  rconn.onerror = (err) ->
-    console.error "Realm WebSocket error:", err
-
-  rconn.onopen = ->
-    console.log "Realm WebSocket opened"
-
-  rconn.onclose = ->
-    console.log "Realm WebSocket closed. Reconnecting."
-    setTimeout (-> tryConnectingToRealm url), 1000
-
-  rconn.onmessage = (msg) ->
-    console.log 'XXX Got state'
+  onCommand: (command, obj) ->
+    console.log 'XXX', 'Got state'
 
 $ ->
-  tryConnectingToAdmin()
+  new AdminClientSession('ws://localhost:8100').connect()

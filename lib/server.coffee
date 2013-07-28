@@ -14,8 +14,11 @@ class ServerSession
   # Called when a command is received from the client.
   onCommand: (command, obj) ->
 
-  # Called when the client disconnects.
-  onRemoved: ->
+  # Called when the socket connects.
+  onOpen: ->
+
+  # Called when the socket disconnects.
+  onClose: ->
 
   toString: ->
     return "<#{ @constructor.name } #{ @id }>"
@@ -50,7 +53,6 @@ class ServerSessionManager
         conn = req.accept @protocol, req.origin
       catch e
         console.error "Couldn't accept protocol #{ @protocol }:", e
-        conn.close()
         return
 
       client = @_addClient conn
@@ -81,9 +83,11 @@ class ServerSessionManager
     id = ServerSessionManager._NextClientID++
     client = new @klass(id, conn)
     @clients[id] = client
+    @clients[id].onOpen()
     return client
 
   _removeClient: (id) ->
+    @clients[id].onClose()
     delete @clients[id]
     return
 
