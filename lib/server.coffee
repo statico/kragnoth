@@ -2,7 +2,7 @@ WebSocketServer = require('websocket').server
 
 # A base class used to handle commands from the client. We send commands
 # a JSON-ified object of the form ['command', {foo: bar, ...}].
-class ProtocolClient
+class ServerSession
 
   constructor: (@id, @conn) ->
 
@@ -22,11 +22,11 @@ class ProtocolClient
 
 # Class which handles the bookkeeping of connected clients and handling
 # messages they send.
-class ClientManager
+class ServerSessionManager
 
   @_NextClientID: 1
 
-  # @param klass A class which extends ProtocolClient
+  # @param klass A class which extends ServerSession
   # @param protocol Name of the websocket protocol
   constructor: (@klass, @protocol) ->
     @clients = {}
@@ -78,7 +78,7 @@ class ClientManager
     return
 
   _addClient: (conn) ->
-    id = ClientManager._NextClientID++
+    id = ServerSessionManager._NextClientID++
     client = new @klass(id, conn)
     @clients[id] = client
     return client
@@ -87,5 +87,5 @@ class ClientManager
     delete @clients[id]
     return
 
-exports.ClientManager = ClientManager
-exports.ProtocolClient = ProtocolClient
+exports.ServerSessionManager = ServerSessionManager
+exports.ServerSession = ServerSession

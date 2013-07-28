@@ -7,7 +7,7 @@ path = require 'path'
 {Vec2} = require 'justmath'
 {GameMaster} = require '../lib/game'
 constants = require '../lib/constants'
-{ClientManager,ProtocolClient} = require '../lib/server'
+{ServerSessionManager,ServerSession} = require '../lib/server'
 
 argv = optimist
   .options('h', alias: 'host', default: '127.0.0.1')
@@ -19,7 +19,7 @@ argv = optimist
 # REALM WEBSOCKET PROTOCOL
 # ---------------------------------------------------------------------------
 
-class RealmProtocolClient extends ProtocolClient
+class RealmServerSession extends ServerSession
 
   onCommand: (command, obj) ->
     console.log 'XXX', command, obj
@@ -35,8 +35,8 @@ httpServer.on 'error', (err) ->
   console.error  "Realm Server error: #{ err }"
   process.exit 1
 
-clients = new ClientManager(RealmProtocolClient, 'realm-protocol')
-clients.attachTo httpServer
+sessions = new ServerSessionManager(RealmServerSession, 'realm-protocol')
+sessions.attachTo httpServer
 
 # ---------------------------------------------------------------------------
 # GAME MASTER
@@ -47,7 +47,7 @@ gm = new GameMaster()
 update = ->
   gm.doRound()
   state = gm.getFullState()
-  clients.everyone (client) ->
+  sessions.everyone (client) ->
     client.conn.send JSON.stringify ['state', state]
   return
 

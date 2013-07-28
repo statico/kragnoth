@@ -6,7 +6,7 @@ path = require 'path'
 childProcess = require 'child_process'
 WebSocketServer = require('websocket').server
 
-{ClientManager,ProtocolClient} = require '../lib/server'
+{ServerSessionManager,ServerSession} = require '../lib/server'
 
 argv = optimist
   .options('h', alias: 'host', default: '127.0.0.1')
@@ -17,7 +17,7 @@ argv = optimist
 # ADMIN WEBSOCKET PROTOCOL
 # ---------------------------------------------------------------------------
 
-class AdminProtocolClient extends ProtocolClient
+class AdminServerSession extends ServerSession
 
   constructor: (id, conn) ->
     super id, conn
@@ -84,5 +84,5 @@ httpServer.on 'error', (err) ->
   console.error  "Realm Admin error: #{ err }"
   process.exit 1
 
-clients = new ClientManager(AdminProtocolClient, 'admin-protocol')
-clients.attachTo httpServer
+sessions = new ServerSessionManager(AdminServerSession, 'admin-protocol')
+sessions.attachTo httpServer
