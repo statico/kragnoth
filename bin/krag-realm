@@ -1,0 +1,54 @@
+#!/usr/bin/env coffee
+
+http = require 'http'
+optimist = require 'optimist'
+path = require 'path'
+
+{Vec2} = require 'justmath'
+{GameMaster} = require '../lib/game'
+constants = require '../lib/constants'
+{ServerSessionManager,ServerSession} = require '../lib/server'
+
+argv = optimist
+  .options('h', alias: 'host', default: '127.0.0.1')
+  .options('p', alias: 'port')
+  .options('n', alias: 'name', default: 'unnamed-realm')
+  .argv
+
+# ---------------------------------------------------------------------------
+# REALM WEBSOCKET PROTOCOL
+# ---------------------------------------------------------------------------
+
+class RealmServerSession extends ServerSession
+
+  onCommand: (command, obj) ->
+    console.log 'XXX', command, obj
+
+# ---------------------------------------------------------------------------
+# SERVER
+# ---------------------------------------------------------------------------
+
+httpServer = http.createServer()
+httpServer.listen argv.port, argv.host, ->
+  console.log "Realm Server listening on #{ argv.host }:#{ argv.port }"
+httpServer.on 'error', (err) ->
+  console.error  "Realm Server error: #{ err }"
+  process.exit 1
+
+sessions = new ServerSessionManager(RealmServerSession, 'realm-protocol')
+sessions.attachTo httpServer
+
+# ---------------------------------------------------------------------------
+# GAME MASTER
+# ---------------------------------------------------------------------------
+
+gm = new GameMaster()
+
+update = ->
+  gm.doRound()
+  state = gm.getFullState()
+  sessions.everyone (client) ->
+    client.conn.send JSON.stringify ['state', state]
+  return
+
+setInterval update, constants.GAME_SPEED

@@ -1,0 +1,92 @@
+#!/usr/bin/env coffee
+
+http = require 'http'
+optimist = require 'optimist'
+path = require 'path'
+childProcess = require 'child_process'
+WebSocketServer = require('websocket').server
+
+{ServerSessionManager,ServerSession} = require '../lib/server'
+
+argv = optimist
+  .options('h', alias: 'host', default: '127.0.0.1')
+  .options('p', alias: 'port', default: 8100)
+  .argv
+
+# ---------------------------------------------------------------------------
+# ADMIN WEBSOCKET PROTOCOL
+# ---------------------------------------------------------------------------
+
+class AdminServerSession extends ServerSession
+
+  constructor: (id, conn) ->
+    super id, conn
+    @isAuthenticated = false
+
+  onOpen: ->
+    @send 'message', text: "Welcome!"
+
+  onCommand: (command, obj) ->
+    if @isAuthenticated
+      # Do nothing
+    else
+      if command == 'auth'
+        console.log "#{ @toString() } authenticated."
+        @send 'message', text: "You are logged in."
+        @isAuthenticated = true
+        child = children.default
+        @send 'connect-to-realm',
+          url: "ws://#{ child.host }:#{ child.port }/"
+      else
+        @send 'auth-error'
+
+# ---------------------------------------------------------------------------
+# REALM SERVER CHILDREN
+# ---------------------------------------------------------------------------
+
+children = {}
+nextPort = 8200
+
+# Graceful shutdown, either through ^C or through nodemon.
+shutdown = ->
+  console.log "Killing all realm servers..."
+  for name, obj of children
+    child = obj.process
+    console.log "Sending SIGKILL to #{ name } (pid #{ child.pid })"
+    child.kill()
+  console.log "Giving children a little time to shut down..."
+  setTimeout (-> process.kill process.pid, 'SIGUSR2'), 1500
+process.once 'SIGUSR2', shutdown # Nodemon
+process.once 'SIGINT', shutdown
+
+# Starts a child process to run a realm.
+startRealm = (name) ->
+  host = '127.0.0.1'
+  port = nextPort++
+  child = childProcess.spawn(
+    "#{ __dirname }/../node_modules/coffee-script/bin/coffee",
+    ["#{ __dirname }/krag-realm", "--port=#{ port }", "--name=#{ name }"],
+  )
+  log = (text) ->
+    console.log "[Realm #{ name }] #{ ("" + text).trim() }"
+  child.stdout.on 'data', log
+  child.stderr.on 'data', log
+  children[name] = { host: host, port: port, process: child }
+  console.log "Spawned realm server for realm #{ name } on port #{ port }"
+
+# Create one realm by default.
+startRealm 'default'
+
+# ---------------------------------------------------------------------------
+# SERVER
+# ---------------------------------------------------------------------------
+
+httpServer = http.createServer()
+httpServer.listen argv.port, argv.host, ->
+  console.log "Realm Admin listening on port #{ argv.host }:#{ argv.port }"
+httpServer.on 'error', (err) ->
+  console.error  "Realm Admin error: #{ err }"
+  process.exit 1
+
+sessions = new ServerSessionManager(AdminServerSession, 'admin-protocol')
+sessions.attachTo httpServer

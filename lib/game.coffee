@@ -1,5 +1,5 @@
 {Vec2} = require 'justmath'
-{Map} = require './map'
+{Map} = require './map.coffee'
 
 ASSERT = (cond) -> throw new Error('Assertion failed') if not cond
 

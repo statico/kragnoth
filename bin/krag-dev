@@ -12,10 +12,11 @@ path = require 'path'
 shoe = require 'shoe'
 stylus = require 'stylus'
 
-util = require './lib/util'
-rpc = require './lib/rpc'
+util = require '../lib/util'
+rpc = require '../lib/rpc'
 
 PORT = parseInt(util.requireEnv('PORT', 8000), 10)
+BASEDIR = "#{ __dirname }/.."
 
 # -------------------------------------------------------------------------
 # INIT
@@ -25,15 +26,13 @@ app = express()
 
 app.configure ->
   app.set 'port', PORT
-  app.set 'views', "#{ __dirname }/views"
+  app.set 'views', "#{ BASEDIR }/views"
   app.set 'view engine', 'jade'
   app.use express.bodyParser()
   app.use express.methodOverride()
-  app.use express.cookieParser util.requireEnv 'COOKIE_SECRET'
-  app.use express.cookieSession secret: util.requireEnv 'SESSION_SECRET'
   app.use app.router
-  app.use express.favicon "#{ __dirname }/public/favicon.png"
-  app.use stylus.middleware(__dirname + '/public')
+  app.use express.favicon "#{ BASEDIR }/public/favicon.png"
+  app.use stylus.middleware(BASEDIR + '/public')
 
 app.configure 'development', ->
   app.locals.pretty = true
@@ -46,8 +45,8 @@ app.configure 'production', ->
 
 DEBUG = app.get('env') == 'development'
 
-bundleUp app, "#{ __dirname }/lib/assets", {
-  staticRoot: "#{ __dirname }/public"
+bundleUp app, "#{ BASEDIR }/lib/assets", {
+  staticRoot: "#{ BASEDIR }/public"
   staticUrlRoot: '/'
   bundle: not DEBUG
   minifyCss: not DEBUG
@@ -55,15 +54,15 @@ bundleUp app, "#{ __dirname }/lib/assets", {
 }
 
 app.use browserifyExpress
-  entry: "#{ __dirname }/lib/index.coffee"
-  watch: "#{ __dirname }/lib"
+  entry: "#{ BASEDIR }/lib/index.coffee"
+  watch: "#{ BASEDIR }/lib"
   mount: "/lib.js"
   verbose: DEBUG
   minify: not DEBUG
   bundle_opts: { debug: DEBUG }
 
 app.configure ->
-  app.use express.static path.join "#{ __dirname }/public"
+  app.use express.static path.join "#{ BASEDIR }/public"
 
 app.locals
   moment: moment
@@ -76,7 +75,7 @@ app.locals
 
 app.get '/', (req, res) -> res.render 'index'
 
-for i in require('./lib/index').APPS
+for i in require("#{ BASEDIR }/lib/index").APPS
   do (i) ->
     app.get "/#{ i }", (req, res) ->
       res.render 'index', entryPoint: i

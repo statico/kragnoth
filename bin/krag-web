@@ -1,0 +1,52 @@
+#!/usr/bin/env coffee
+
+browserifyExpress = require 'browserify-express'
+express = require 'express'
+http = require 'http'
+path = require 'path'
+lessMiddleware = require 'less-middleware'
+
+rpc = require '../lib/rpc'
+constants = require '../lib/constants'
+
+PORT = parseInt(process.env.PORT ? 8000)
+BASEDIR = "#{ __dirname }/.."
+
+app = express()
+
+app.set 'port', PORT
+app.set 'views', "#{ BASEDIR }/views"
+app.set 'view engine', 'jade'
+app.use express.favicon "#{ BASEDIR }/public/favicon.png"
+app.use express.bodyParser()
+app.use express.methodOverride()
+app.use express.cookieParser constants.COOKIE_SECRET
+app.use express.cookieSession constants.SESSION_SECRET
+app.use app.router
+app.use lessMiddleware(src: "#{ BASEDIR }/public")
+
+app.configure 'development', ->
+  app.use express.logger 'dev'
+  app.use express.errorHandler(dumpExceptions: true, showStack: true)
+
+app.configure 'production', ->
+  app.use express.logger 'warn'
+  app.use express.errorHandler()
+
+DEBUG = app.get('env') == 'development'
+
+app.use browserifyExpress
+  entry: "#{ BASEDIR }/lib/web-client.coffee"
+  watch: "#{ BASEDIR }/lib"
+  mount: "/web-client.js"
+  verbose: DEBUG
+  minify: not DEBUG
+  bundle_opts: { debug: DEBUG }
+
+app.use express.static path.join "#{ BASEDIR }/public"
+
+app.get '/', (req, res) ->
+  res.render 'web-client'
+
+http.createServer(app).listen PORT, ->
+  console.log "Web client listening on http://localhost:#{ PORT }"

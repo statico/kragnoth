@@ -1,9 +1,15 @@
 #!/usr/bin/env coffee
 
-sjsc = require 'sockjs-client'
+optimist = require 'optimist'
+WebSocketClient = require('websocket').client
 
-{Map} = require './lib/map'
-{ClientWorld} = require './lib/game'
+{Map} = require '../lib/map'
+{ClientWorld} = require '../lib/game'
+
+argv = optimist
+  .options('h', alias: 'host', default: '127.0.0.1')
+  .options('p', alias: 'port', default: 8200)
+  .argv
 
 class View
 
@@ -71,23 +77,25 @@ process.on 'exit', ->
 
 tryConnecting = ->
 
-  client = sjsc.create 'http://localhost:9999/socket'
+  client = new WebSocketClient()
 
-  client.on 'connection', ->
-
-  client.on 'data', (raw) ->
-    message = JSON.parse raw
-    return if not message?.length == 2
-    [cmd, data] = message
-    return if cmd != 'state'
-    world.loadFromState data
-    view.draw world
-
-  client.on 'error', (err) ->
-    client.close()
-    if err[0]?.code in ['ECONNREFUSED', 'ECONNRESET']
+  client.on 'connectFailed', (err) ->
+    if err.code in ['ECONNREFUSED', 'ECONNRESET']
       setTimeout tryConnecting, 500
     else
-      console.log err
+      console.error err
+
+  client.on 'connect', (conn) ->
+    console.log 'Connected to realm server'
+
+    conn.on 'message', (message) ->
+      tuple = JSON.parse message.utf8Data
+      return if not tuple?.length == 2
+      [cmd, data] = tuple
+      return if cmd != 'state'
+      world.loadFromState data
+      view.draw world
+
+  client.connect "ws://#{ argv.host }:#{ argv.port }", 'realm-protocol'
 
 tryConnecting()
