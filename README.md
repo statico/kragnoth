@@ -11,6 +11,7 @@
 
 * _world_ - Everything in the simulation -- all levels and all players.
 * _realm_ - A single level of the Kragnoth world.
+* _tick_ - One pulse of the world's internal clock.
 * _client_ - A user connected to the world playing or observing the game.
 * _agent_ - An actor in the game, either an NPC (non-player character) or human player
 * _admin_ - Entity that handles user authentication and permissions for the entire world. Also directs clients to disconnect and connect to realms.
