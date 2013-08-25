@@ -9,13 +9,15 @@ WebSocketClient = require('websocket').client
 argv = optimist
   .options('h', alias: 'host', default: '127.0.0.1')
   .options('p', alias: 'port', default: 8200)
+  .options('b', alias: 'bgcolor', default: 'black')
+  .options('f', alias: 'fgcolor', default: 'white')
   .argv
 
 class View
 
   @Colors: ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white']
 
-  constructor: ->
+  constructor: (@bgcolor, @fgcolor) ->
     @charm = require('charm')()
     @charm.pipe(process.stdout)
     @charm
@@ -23,12 +25,13 @@ class View
       .erase('screen')
       .cursor(false)
       .position(0, 0)
+    @charm.background(@bgcolor)
+    @charm.foreground(@fgcolor)
 
   draw: (world) ->
     @charm.erase 'screen'
 
     # Draw a character for each agent.
-    @charm.foreground('black')
     world.map.foreach (p) =>
       @charm.position p.x + 1, p.y + 1
       switch world.map.get(p)
@@ -55,12 +58,15 @@ class View
 
       # All dead agents are a corpse.
       if not agent.isAlive()
-        @charm.foreground('black').write 'x'
+        @charm.write 'x'
         continue
 
       switch agent.type
-        when 'drone' then @charm.foreground('white').write 'o'
-        when 'mosquito' then @charm.foreground('red').write 'M'
+        when 'mosquito'
+            @charm.push(true)
+            @charm.foreground('red').write 'M'
+            @charm.pop(true)
+        when 'drone' then @charm.write 'o'
         else @charm.write '?'
 
     return
@@ -70,7 +76,7 @@ class View
 
 client = null
 world = new ClientWorld()
-view = new View()
+view = new View(argv.bgcolor, argv.fgcolor)
 
 process.on 'exit', ->
   view.teardown()
