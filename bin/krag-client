@@ -5,6 +5,7 @@ WebSocketClient = require('websocket').client
 
 {Map} = require '../lib/map'
 {ClientWorld} = require '../lib/game'
+{Vec2} = require 'justmath'
 
 argv = optimist
   .options('h', alias: 'host', default: '127.0.0.1')
@@ -28,55 +29,104 @@ class View
     @charm.background(@bgcolor)
     @charm.foreground(@fgcolor)
 
+  draw_map_cell: (cell) ->
+    p = cell
+    @charm.position p.x + 1, p.y + 1
+    switch world.map.get(p)
+      when Map.Cells.EMPTY
+        @charm.write ' '
+      when Map.Cells.WALL
+        switch world.map.wallType p
+          when 'h' then @charm.write '-'
+          when 'v' then @charm.write '|'
+          else @charm.write '+'
+      when Map.Cells.ROOM
+        @charm.write '.'
+      when Map.Cells.DOOR
+        @charm.write '_'
+      when Map.Cells.HALLWAY
+        @charm.write '#'
+
+  draw_agent: (agent) ->
+    @charm.position agent.location.x + 1, agent.location.y + 1
+
+    # All dead agents are a corpse.
+    if not agent.isAlive()
+      @charm.write 'x'
+      return
+
+    switch agent.type
+      when 'drone' then @charm.write 'o'
+      when 'mosquito'
+        # TODO I guess you're supposed to chain method calls (sigh)
+        @charm.push true
+        @charm.foreground('red').write 'M'
+        @charm.pop true
+      when 'drone' then @charm.write 'o'
+      else @charm.write '?'
+
   draw: (world) ->
-    @charm.erase 'screen'
+    # If we haven't seen the world before, draw the whole thing from
+    # scratch and prime the @oldlocations pump (TODO world is a bit of a
+    # misnomer; presently each world is actually a realm, ie a floor of
+    # the dungeon).
+    if not @oldlocations?
+      console.error "haven't drawn the world before!  exciting!"
 
-    # Draw a character for each agent.
-    world.map.foreach (p) =>
-      @charm.position p.x + 1, p.y + 1
-      switch world.map.get(p)
-        when Map.Cells.EMPTY
-          @charm.write ' '
-        when Map.Cells.WALL
-          switch world.map.wallType p
-            when 'h' then @charm.write '-'
-            when 'v' then @charm.write '|'
-            else @charm.write '+'
-        when Map.Cells.ROOM
-          @charm.write '.'
-        when Map.Cells.DOOR
-          @charm.write '_'
-        when Map.Cells.HALLWAY
-          @charm.write '#'
+      # save the locations
+      @oldlocations = {}
+      for a in world.agents
+        @oldlocations[a.id] = new Object a.location
+      console.error "made a new oldlocations:"
+      console.error @oldlocations
 
+      # erase & draw the entire screen (ie the whole map).
+      @charm.erase 'screen'
+      world.map.foreach (p) =>
+        @draw_map_cell p
+
+    # update the view to match the new world
+    # the world contains:
+    #   * array of agents & their positions (x, y)
+    #   * 2D array of map tiles:
+    #       [ [ 'HALLWAY', 'HALLWAY', 'HALLWAY', 'HALLWAY', 'HALLWAY', 'HALLWAY' ],
+    #         [ 'EMPTY', 'EMPTY', 'EMPTY', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL', 'HALLWAY' ] 
+    #         (etc, etc)
+    #       ]
+    # it's a big waste to redraw the whole world every tick (even in
+    # 2013, not everybody has a fast terminal).  Only redraw things that
+    # have changed.  Assume that the screen looks like the last frame,
+    # and that only agents change (TODO this is a false assumption in
+    # the long run).
+    # TODO surely there's a shorter coffee idiom for "get the first item
+    # out of a list for which this expression is true?"
+    nskeeter = a for a in world.agents when a.type is 'mosquito'
+    oskeeterlocation = @oldlocations[nskeeter.id]
+
+    console.error('[old, new] =', [oskeeterlocation, nskeeter.location])
+
+    # first, erase all the old positions by redrawing the appropriate map tiles
+    for k, v of @oldlocations
+      # TODO why isn't it a Vec2 to begin with?
+      if v.id is nskeeter.id
+        console.error "about to overwrite this position: ", v.location
+      @draw_map_cell new Vec2 v
+
+    # second, draw all the new positions
     # Always draw alive agents on top of dead ones.
     world.agents.sort (a, b) -> if a.isAlive() then 1 else -1
+    @draw_agent a for a in world.agents
 
-    # Draw a character for each agent.
-    for agent in world.agents
-      @charm.position agent.location.x + 1, agent.location.y + 1
-
-      # All dead agents are a corpse.
-      if not agent.isAlive()
-        @charm.write 'x'
-        continue
-
-      switch agent.type
-        when 'mosquito'
-            @charm.push(true)
-            @charm.foreground('red').write 'M'
-            @charm.pop(true)
-        when 'drone' then @charm.write 'o'
-        else @charm.write '?'
-
-    return
+    # Remember the world for when the next frame comes around
+    for a in world.agents
+      @oldlocations[a.id] = new Object a.location
 
   teardown: ->
     @charm.cursor(true).erase('line')
 
 client = null
 world = new ClientWorld()
-view = new View(argv.bgcolor, argv.fgcolor)
+view = new View argv.bgcolor, argv.fgcolor
 
 process.on 'exit', ->
   view.teardown()
