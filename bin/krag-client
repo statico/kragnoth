@@ -12,7 +12,11 @@ argv = optimist
   .options('p', alias: 'port', default: 8200)
   .options('b', alias: 'bgcolor', default: 'black')
   .options('f', alias: 'fgcolor', default: 'white')
+  .options('v', alias: 'verbose').boolean('v')
   .argv
+
+debug = (message...) ->
+  if argv.verbose then console.error message...
 
 class View
 
@@ -71,14 +75,13 @@ class View
     # misnomer; presently each world is actually a realm, ie a floor of
     # the dungeon).
     if not @oldlocations?
-      console.error "haven't drawn the world before!  exciting!"
+      debug "haven't drawn the world before!  exciting!"
 
       # save the locations
       @oldlocations = {}
       for a in world.agents
         @oldlocations[a.id] = new Object a.location
-      console.error "made a new oldlocations:"
-      console.error @oldlocations
+      debug "made a new oldlocations:\n", @oldlocations
 
       # erase & draw the entire screen (ie the whole map).
       @charm.erase 'screen'
@@ -103,13 +106,13 @@ class View
     nskeeter = a for a in world.agents when a.type is 'mosquito'
     oskeeterlocation = @oldlocations[nskeeter.id]
 
-    console.error('[old, new] =', [oskeeterlocation, nskeeter.location])
+    debug '[old, new] =', [oskeeterlocation, nskeeter.location]
 
     # first, erase all the old positions by redrawing the appropriate map tiles
     for k, v of @oldlocations
       # TODO why isn't it a Vec2 to begin with?
       if v.id is nskeeter.id
-        console.error "about to overwrite this position: ", v.location
+        debug "about to overwrite this position: ", v.location
       @draw_map_cell new Vec2 v
 
     # second, draw all the new positions
@@ -139,7 +142,7 @@ tryConnecting = ->
     if err.code in ['ECONNREFUSED', 'ECONNRESET']
       setTimeout tryConnecting, 500
     else
-      console.error err
+      debug err
 
   client.on 'connect', (conn) ->
     console.log 'Connected to realm server'
