@@ -73,9 +73,9 @@ class View
     # If we haven't seen the world before, draw the whole thing from
     # scratch and prime the @oldlocations pump (TODO world is a bit of a
     # misnomer; presently each world is actually a realm, ie a floor of
-    # the dungeon).
+    # the dungeon).  If we HAVE seen the world before, only draw the
+    # things that have changed since the last rendering.
     if not @oldlocations?
-      debug "haven't drawn the world before!  exciting!"
 
       # save the locations
       @oldlocations = {}
@@ -88,30 +88,15 @@ class View
       world.map.foreach (p) =>
         @draw_map_cell p
 
-    # update the view to match the new world
-    # the world contains:
-    #   * array of agents & their positions (x, y)
-    #   * 2D array of map tiles:
-    #       [ [ 'HALLWAY', 'HALLWAY', 'HALLWAY', 'HALLWAY', 'HALLWAY', 'HALLWAY' ],
-    #         [ 'EMPTY', 'EMPTY', 'EMPTY', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL', 'HALLWAY' ] 
-    #         (etc, etc)
-    #       ]
-    # it's a big waste to redraw the whole world every tick (even in
-    # 2013, not everybody has a fast terminal).  Only redraw things that
-    # have changed.  Assume that the screen looks like the last frame,
-    # and that only agents change (TODO this is a false assumption in
-    # the long run).
-    # TODO surely there's a shorter coffee idiom for "get the first item
-    # out of a list for which this expression is true?"
-    nskeeter = a for a in world.agents when a.type is 'mosquito'
-    oskeeterlocation = @oldlocations[nskeeter.id]
+    # v-- this is actually briefer than using [].filter or [].reduce . . . 
+    skeeter = a for a in world.agents when a.type is 'mosquito'
+    skeeter.old_location = @oldlocations[skeeter.id]
 
-    debug '[old, new] =', [oskeeterlocation, nskeeter.location]
+    debug '[old, new] =', [skeeter.old_location, skeeter.location]
 
     # first, erase all the old positions by redrawing the appropriate map tiles
     for k, v of @oldlocations
-      # TODO why isn't it a Vec2 to begin with?
-      if v.id is nskeeter.id
+      if argv.verbose and v.id is skeeter.id
         debug "about to overwrite this position: ", v.location
       @draw_map_cell new Vec2 v
 
