@@ -62,10 +62,7 @@ class View
     switch agent.type
       when 'drone' then @charm.write 'o'
       when 'mosquito'
-        # TODO I guess you're supposed to chain method calls (sigh)
-        @charm.push true
-        @charm.foreground('red').write 'M'
-        @charm.pop true
+        @charm.push(true).foreground('red').write('M').pop(true)
       when 'drone' then @charm.write 'o'
       else @charm.write '?'
 
@@ -76,7 +73,6 @@ class View
     # the dungeon).  If we HAVE seen the world before, only draw the
     # things that have changed since the last rendering.
     if not @oldlocations?
-
       # save the locations
       @oldlocations = {}
       for a in world.agents
@@ -88,7 +84,7 @@ class View
       world.map.foreach (p) =>
         @draw_map_cell p
 
-    # v-- this is actually briefer than using [].filter or [].reduce . . . 
+    # v-- this is actually briefer than using [].filter or [].reduce
     skeeter = a for a in world.agents when a.type is 'mosquito'
     skeeter.old_location = @oldlocations[skeeter.id]
 
@@ -127,7 +123,7 @@ tryConnecting = ->
     if err.code in ['ECONNREFUSED', 'ECONNRESET']
       setTimeout tryConnecting, 500
     else
-      debug err
+      console.error err
 
   client.on 'connect', (conn) ->
     console.log 'Connected to realm server'
