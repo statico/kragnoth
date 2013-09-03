@@ -33,7 +33,7 @@ class View
     @charm.background(@bgcolor)
     @charm.foreground(@fgcolor)
 
-  draw_map_cell: (cell) ->
+  drawMapCell: (cell) ->
     p = cell
     @charm.position p.x + 1, p.y + 1
     switch world.map.get(p)
@@ -51,7 +51,7 @@ class View
       when Map.Cells.HALLWAY
         @charm.write '#'
 
-  draw_agent: (agent) ->
+  drawAgent: (agent) ->
     @charm.position agent.location.x + 1, agent.location.y + 1
 
     # All dead agents are a corpse.
@@ -82,24 +82,25 @@ class View
       # erase & draw the entire screen (ie the whole map).
       @charm.erase 'screen'
       world.map.foreach (p) =>
-        @draw_map_cell p
+        @drawMapCell p
 
-    # v-- this is actually briefer than using [].filter or [].reduce
-    skeeter = a for a in world.agents when a.type is 'mosquito'
-    skeeter.old_location = @oldlocations[skeeter.id]
+    if argv.verbose
+      # v-- this is actually briefer than using [].filter or [].reduce
+      skeeter = a for a in world.agents when a.type is 'mosquito'
+      skeeter.old_location = @oldlocations[skeeter.id]
 
-    debug '[old, new] =', [skeeter.old_location, skeeter.location]
+      debug '[old, new] =', [skeeter.old_location, skeeter.location]
 
     # first, erase all the old positions by redrawing the appropriate map tiles
     for k, v of @oldlocations
       if argv.verbose and v.id is skeeter.id
         debug "about to overwrite this position: ", v.location
-      @draw_map_cell new Vec2 v
+      @drawMapCell new Vec2 v
 
     # second, draw all the new positions
     # Always draw alive agents on top of dead ones.
     world.agents.sort (a, b) -> if a.isAlive() then 1 else -1
-    @draw_agent a for a in world.agents
+    @drawAgent a for a in world.agents
 
     # Remember the world for when the next frame comes around
     for a in world.agents
