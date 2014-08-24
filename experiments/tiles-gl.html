@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+<head>
+<style>
+body { background: #ccc }
+canvas { border: 3px solid #333 }
+</style>
+</head>
+<body>
+
+<canvas id="canvas" width="600" height="400"/>
+
+<script src="public/third-party/gl-matrix/dist/gl-matrix.js"></script>
+<script src="public/third-party/coffee-script/extras/coffee-script.js"></script>
+
+<script id="shader-fs" type="x-shader/x-fragment">
+precision mediump float;
+
+void main(void) {
+  gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+}
+</script>
+
+<script id="shader-vs" type="x-shader/x-vertex">
+attribute vec3 aVertexPosition;
+
+uniform mat4 uMVMatrix;
+uniform mat4 uPMatrix;
+
+void main(void) {
+  gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+}
+</script>
+
+<script type="text/coffeescript">
+
+canvas = document.getElementById "canvas"
+gl = canvas.getContext('webgl') or canvas.getContext('experimental-webgl')
+throw new Error('no webgl') unless gl
+
+######## init
+
+gl.clearColor 0, 0, 0, 1
+gl.enable gl.DEPTH_TEST
+gl.depthFunc gl.LEQUAL
+gl.viewport 0, 0, canvas.width, canvas.height
+
+######## shaders
+
+fragShader = gl.createShader gl.FRAGMENT_SHADER
+gl.shaderSource fragShader, document.getElementById('shader-fs').innerText
+gl.compileShader fragShader
+unless gl.getShaderParameter(fragShader, gl.COMPILE_STATUS)
+  throw new Error(gl.getShaderInfoLog(fragShader))
+
+vertShader = gl.createShader gl.VERTEX_SHADER
+gl.shaderSource vertShader, document.getElementById('shader-vs').innerText
+gl.compileShader vertShader
+unless gl.getShaderParameter(vertShader, gl.COMPILE_STATUS)
+  throw new Error(gl.getShaderInfoLog(vertShader))
+
+shader = gl.createProgram()
+gl.attachShader shader, vertShader
+gl.attachShader shader, fragShader
+gl.linkProgram shader
+unless gl.getProgramParameter shader, gl.LINK_STATUS
+  throw new Error("couldn't initialize shaders")
+
+gl.useProgram shader
+
+vertPosAttr = gl.getAttribLocation shader, 'aVertexPosition'
+gl.enableVertexAttribArray vertPosAttr
+
+pMatrixUniform = gl.getUniformLocation shader, 'uPMatrix'
+mvMatrixUniform = gl.getUniformLocation shader, 'uMVMatrix'
+
+######## buffers
+
+vertBuffer = gl.createBuffer()
+gl.bindBuffer gl.ARRAY_BUFFER, vertBuffer
+
+verts = [
+  0.0, 0.0, 0.0,
+  1.0, 0.0, 0.0,
+  0.0, 1.0, 0.0,
+]
+
+gl.bufferData gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW
+
+pMatfix = mat4.ortho mat4.create(), -1, 1, -1, 1, -100, 100
+mvMatrix = mat4.identity mat4.create()
+
+draw = ->
+  requestAnimationFrame draw
+
+  gl.clear gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIG
+
+  gl.uniformMatrix4fv pMatrixUniform, false, pMatfix
+  gl.uniformMatrix4fv mvMatrixUniform, false, mvMatrix
+
+  gl.bindBuffer gl.ARRAY_BUFFER, vertBuffer
+  gl.vertexAttribPointer shader.vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0
+  gl.drawArrays gl.TRIANGLES, 0, 3
+
+draw()
+
+</script>
+
+</body>
+</html>
