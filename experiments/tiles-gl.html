@@ -2,7 +2,7 @@
 <html>
 <head>
 <style>
-body { background: #ccc }
+body { background: #666 }
 canvas { border: 3px solid #333 }
 </style>
 </head>
@@ -13,25 +13,6 @@ canvas { border: 3px solid #333 }
 <script src="public/third-party/gl-matrix/dist/gl-matrix.js"></script>
 <script src="public/third-party/coffee-script/extras/coffee-script.js"></script>
 
-<script id="shader-fs" type="x-shader/x-fragment">
-precision mediump float;
-
-void main(void) {
-  gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
-}
-</script>
-
-<script id="shader-vs" type="x-shader/x-vertex">
-attribute vec3 aVertexPosition;
-
-uniform mat4 uMVMatrix;
-uniform mat4 uPMatrix;
-
-void main(void) {
-  gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
-}
-</script>
-
 <script type="text/coffeescript">
 
 canvas = document.getElementById "canvas"
@@ -40,24 +21,43 @@ throw new Error('no webgl') unless gl
 
 ######## init
 
-gl.clearColor 0, 0, 0, 1
+gl.clearColor 101/255, 135/255, 149/255, 1
 gl.enable gl.DEPTH_TEST
 gl.depthFunc gl.LEQUAL
 gl.viewport 0, 0, canvas.width, canvas.height
 
+if not gl.getExtension 'OES_texture_float'
+  throw new Error('no OES_texture_float')
+
 ######## shaders
 
-fragShader = gl.createShader gl.FRAGMENT_SHADER
-gl.shaderSource fragShader, document.getElementById('shader-fs').innerText
-gl.compileShader fragShader
-unless gl.getShaderParameter(fragShader, gl.COMPILE_STATUS)
-  throw new Error(gl.getShaderInfoLog(fragShader))
-
 vertShader = gl.createShader gl.VERTEX_SHADER
-gl.shaderSource vertShader, document.getElementById('shader-vs').innerText
+gl.shaderSource vertShader, """
+attribute vec3 aVertexPosition;
+attribute vec2 aTextureCoord;
+uniform mat4 uMVMatrix;
+uniform mat4 uPMatrix;
+varying mediump vec2 vTextureCoord;
+void main(void) {
+  gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+  vTextureCoord = aTextureCoord;
+}
+"""
 gl.compileShader vertShader
 unless gl.getShaderParameter(vertShader, gl.COMPILE_STATUS)
   throw new Error(gl.getShaderInfoLog(vertShader))
+
+fragShader = gl.createShader gl.FRAGMENT_SHADER
+gl.shaderSource fragShader, """
+varying mediump vec2 vTextureCoord;
+uniform sampler2D uSampler;
+void main(void) {
+  gl_FragColor = texture2D(uSampler, vTextureCoord.xy);
+}
+"""
+gl.compileShader fragShader
+unless gl.getShaderParameter(fragShader, gl.COMPILE_STATUS)
+  throw new Error(gl.getShaderInfoLog(fragShader))
 
 shader = gl.createProgram()
 gl.attachShader shader, vertShader
@@ -74,32 +74,77 @@ gl.enableVertexAttribArray vertPosAttr
 pMatrixUniform = gl.getUniformLocation shader, 'uPMatrix'
 mvMatrixUniform = gl.getUniformLocation shader, 'uMVMatrix'
 
+######## textures
+
+tex = gl.createTexture()
+image = new Image()
+image.onload = ->
+  gl.bindTexture gl.TEXTURE_2D, tex
+  gl.pixelStorei gl.UNPACK_FLIP_Y_WEBGL, true
+  gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNISIGNED_BYTE, image
+  gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST
+  gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST
+  gl.bindTexture gl.TEXTURE_2D, null
+image.src = 'nevanda-tiles.png'
+
+gl.activeTexture gl.TEXTURE0
+gl.bindTexture gl.getUniformLocation(shader, 'uSampler'), 0
+
+texCoordAttr = gl.getAttribLocation shader, 'aTextureCoord'
+gl.enableVertexAttribArray texCoordAttr
+
 ######## buffers
 
 vertBuffer = gl.createBuffer()
 gl.bindBuffer gl.ARRAY_BUFFER, vertBuffer
-
 verts = [
   0.0, 0.0, 0.0,
   1.0, 0.0, 0.0,
   0.0, 1.0, 0.0,
 ]
-
 gl.bufferData gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW
+
+texBuffer = gl.createBuffer()
+gl.bindBuffer gl.ARRAY_BUFFER, texBuffer
+x = .03125
+coords = [
+  0.0, 0.0,
+  x, 0.0,
+  0.0, x,
+  x, x
+]
+gl.bufferData gl.ARRAY_BUFFER, new Float32Array(coords), gl.STATIC_DRAW
+
+indexBuffer = gl.createBuffer()
+gl.bindBuffer gl.ELEMENT_ARRAY_BUFFER, indexBuffer
+indices = [
+
+]
+gl.bufferData gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW
 
 pMatfix = mat4.ortho mat4.create(), -1, 1, -1, 1, -100, 100
 mvMatrix = mat4.identity mat4.create()
+
+######## draw
 
 draw = ->
   requestAnimationFrame draw
 
   gl.clear gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIG
 
+  gl.bindBuffer gl.ARRAY_BUFFER, vertBuffer
+  gl.vertexAttribPointer vertPosAttr, 3, gl.FLOAT, false, 0, 0
+
+  gl.bindBuffer gl.ARRAY_BUFFER, texBuffer
+  gl.vertexAttribPointer texCoordAttr, 2, gl.FLOAT, false, 0, 0
+
+  gl.activeTexture gl.TEXTURE0
+  gl.bindTexture gl.TEXTURE_2D, tex
+  gl.uniform1i gl.getUniformLocation(shader, 'uSampler'), 0
+
+  gl.bindBuffer gl.ELEMENT_ARRAY_BUFFER, indexBuffer
   gl.uniformMatrix4fv pMatrixUniform, false, pMatfix
   gl.uniformMatrix4fv mvMatrixUniform, false, mvMatrix
-
-  gl.bindBuffer gl.ARRAY_BUFFER, vertBuffer
-  gl.vertexAttribPointer shader.vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0
   gl.drawArrays gl.TRIANGLES, 0, 3
 
 draw()
