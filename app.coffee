@@ -126,10 +126,16 @@ class World
 
     @messages = null
 
+  kill: (actor) ->
+    [x, y] = actor.pos
+    @level.actors.delete x, y
+    index = @monsters.indexOf actor
+    @monsters.splice index, 1 if index != -1
+
   simulate: (tickSpeed, tick) ->
     @messages = []
 
-    updatePos = (pos, dir, isPlayer) =>
+    updatePos = (actor, command, dir) =>
       delta = switch dir
         when 'n' then [0, -1]
         when 's' then [0, 1]
@@ -141,35 +147,47 @@ class World
         when 'se' then [1, 1]
         else [0, 0]
       next = [0, 0]
-      vec2.add next, pos, delta
+      vec2.add next, actor.pos, delta
       vec2.min next, next, [@level.width - 1, @level.height - 1]
       vec2.max next, next, [0, 0]
       tile = @level.terrain.get next[0], next[1]
-      actor = @level.actors.get next[0], next[1]
-      if tile in [2, 3] and not actor
-        vec2.copy pos, next
-        return true
-      else
-        if isPlayer and actor
-          @messages.push "#{ actor.name } is in the way"
-        return false
+      neighbor = @level.actors.get next[0], next[1]
+      if command in ['move', 'attack-move']
+        if tile in [2, 3] and not neighbor
+          vec2.copy actor.pos, next
+        if actor.isPlayer and neighbor and command != 'attack-move'
+          @messages.push "#{ neighbor.name } is in the way"
+      if command in ['attack-move', 'attack']
+        if neighbor
+          solveAttack actor, neighbor
+
+    solveAttack = (attacker, defender) =>
+      defender.hp -= attacker.ap
+      if attacker.isPlayer
+        @messages.push "You hit the #{ defender.name }"
+      if defender.isPlayer
+        @messages.push "The #{ attacker.name } hits!"
+      if defender.hp <= 0
+        @kill defender
+        if attacker.isPlayer
+          @messages.push "You kill the #{ defender.name }!"
 
     command = @player.simulate()
-    if command?.command is 'move'
+    if command?.command in ['move', 'attack-move', 'attack']
       oldPos = vec2.copy [0,0], @player.pos
-      if updatePos @player.pos, command.direction, true
-        @level.actors.delete oldPos[0], oldPos[1]
-        @level.actors.set @player.pos[0], @player.pos[1], @player
+      updatePos @player, command.command, command.direction
+      @level.actors.delete oldPos[0], oldPos[1]
+      @level.actors.set @player.pos[0], @player.pos[1], @player
 
     for monster in @monsters
       delta = (tick - monster.lastTick) * tickSpeed
       continue unless delta >= 1000 / monster.speed
       command = monster.simulate()
-      if command?.command is 'move'
+      if command?.command in ['move', 'attack-move', 'attack']
         oldPos = vec2.copy [0,0], monster.pos
-        if updatePos monster.pos, command.direction, false
-          @level.actors.delete oldPos[0], oldPos[1]
-          @level.actors.set monster.pos[0], monster.pos[1], monster
+        updatePos monster, command.command, command.direction
+        @level.actors.delete oldPos[0], oldPos[1]
+        @level.actors.set monster.pos[0], monster.pos[1], monster
       monster.lastTick = tick
 
     # computer what areas the player can see
@@ -232,9 +250,12 @@ class Player
   constructor: (@name) ->
     @pos = [3, 3]
     @lastInput = null
+    @isPlayer = true
+    @ap = 5
+    @hp = 50
   simulate: ->
     if @lastInput
-      command = { command: 'move', direction: @lastInput.direction }
+      command = { command: 'attack-move', direction: @lastInput.direction }
       @lastInput = null
     return command
   toJSON: ->
@@ -244,6 +265,8 @@ class Player
     }
 
 class Monster
+  constructor: ->
+    @isPlayer = false
   simulate: ->
     directions = 'n w s e nw sw se ne'.split ' '
     dir = directions[Math.floor(Math.random() * directions.length)]
@@ -262,12 +285,18 @@ class Monster
 
 class Mosquito extends Monster
   constructor: ->
+    super()
     @name = 'mosquito'
     @pos = [10, 10]
     @speed = 10
+    @hp = 1
+    @ap = 1
 
 class Slug extends Monster
   constructor: ->
+    super()
     @name = 'slug'
     @pos = [11, 10]
     @speed = 1
+    @hp = 10
+    @ap = 0

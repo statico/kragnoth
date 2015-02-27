@@ -39,7 +39,7 @@ cncSocket.onmessage = (event) ->
         {tick, diff, messages} = msg
         info.innerText = "Tick: #{ tick }"
         if messages?.length
-          log.innerText = messages.join('\n') + '\n' + log.innerText
+          log.innerText = messages.reverse().join('\n') + '\n' + log.innerText
 
         for y, row of diff.map
           for x, obj of row
