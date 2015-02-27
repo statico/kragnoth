@@ -37,11 +37,11 @@ app.get '/', (req, res) ->
     </html>
     '''
 
-app.listen WEB_PORT, ->
+app.listen WEB_PORT, '0.0.0.0', ->
   console.log "Web server listening on http://127.0.0.1:#{ WEB_PORT }/"
 
 cncServer = http.createServer()
-cncServer.listen CNC_PORT, -> console.log "CNC server on #{ CNC_PORT }"
+cncServer.listen CNC_PORT, '0.0.0.0', -> console.log "CNC server on #{ CNC_PORT }"
 
 cncWSServer = new websocket.server(httpServer: cncServer)
 cncWSServer.on 'request', (req) ->
@@ -58,7 +58,7 @@ cncWSServer.on 'request', (req) ->
   conn.sendUTF JSON.stringify type: 'connect', url: "ws://127.0.0.1:#{ GAME_PORT }/"
 
 gameServer = http.createServer()
-gameServer.listen GAME_PORT, -> console.log "Game server on #{ GAME_PORT }"
+gameServer.listen GAME_PORT, '0.0.0.0', -> console.log "Game server on #{ GAME_PORT }"
 
 gameWSServer = new websocket.server(httpServer: gameServer)
 gameWSServer.on 'request', (req) ->

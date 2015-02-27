@@ -54,8 +54,7 @@ cncSocket.onmessage = (event) ->
         h = diff.height
         canvas.width = w * SIZE
         canvas.height = h * SIZE
-        ctx.fillStyle = '#000'
-        ctx.fillRect 0, 0, canvas.width, canvas.height
+        ctx.clearRect 0, 0, canvas.width, canvas.height
         for y, row of diff.map
           for x, obj of row
             switch obj.terrain
