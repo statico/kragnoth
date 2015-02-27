@@ -63,9 +63,12 @@ cncSocket.onmessage = (event) ->
         ctx.fillStyle = '#DBA4D9'
         ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
 
-        if msg.monster
-          [x, y] = msg.monster
-          ctx.fillStyle = '#0f0'
+        for monster in msg.monsters
+          [x, y] = monster.pos
+          style = switch monster.name
+            when 'mosquito' then '#0f0'
+            when 'slug' then '#00c'
+          ctx.fillStyle = style
           ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
 
   return

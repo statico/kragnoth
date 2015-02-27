@@ -93,16 +93,15 @@ class Scheduler
       start = Date.now()
       @tick++
       diff = @world.simulate()
-      [x, y] = @world.monster.pos
-      if diff.get x, y
-        monster = @world.monster.pos
-      else
-        monster = null
+      monsters = []
+      for monster in @world.monsters
+        [x, y] = monster.pos
+        monsters.push monster.toViewJSON() if diff.get x, y
       @send
         type: 'tick'
         tick: @tick
         player: @world.player.toJSON()
-        monster: monster
+        monsters: monsters
         diff: diff.toJSON()
         messages: @world.messages
       next = (start + @tickSpeed) - Date.now()
@@ -115,7 +114,7 @@ class World
   constructor: (playerName) ->
     @level = new Level()
     @player = new Player(playerName)
-    @monster = new Monster()
+    @monsters = [new Mosquito(), new Slug()]
 
   simulate: ->
 
@@ -142,9 +141,10 @@ class World
     if command?.command is 'move'
       updatePos @player.pos, command.direction
 
-    command = @monster.simulate()
-    if command?.command is 'move'
-      updatePos @monster.pos, command.direction
+    for monster in @monsters
+      command = monster.simulate()
+      if command?.command is 'move'
+        updatePos monster.pos, command.direction
 
     # computer what areas the player can see
     diff = new SparseMap(@level.width, @level.height)
@@ -211,9 +211,6 @@ class Player
     }
 
 class Monster
-  constructor: ->
-    @name = 'mosquito'
-    @pos = [10, 10]
   simulate: ->
     directions = 'n w s e nw sw se ne'.split ' '
     dir = directions[Math.floor(Math.random() * directions.length)]
@@ -222,4 +219,22 @@ class Monster
     return {
       name: @name
       pos: @pos
+      speed: @speed
     }
+  toViewJSON: ->
+    return {
+      name: @name
+      pos: @pos
+    }
+
+class Mosquito extends Monster
+  constructor: ->
+    @name = 'mosquito'
+    @pos = [10, 10]
+    @speed = 10
+
+class Slug extends Monster
+  constructor: ->
+    @name = 'slug'
+    @pos = [11, 10]
+    @speed = 1
