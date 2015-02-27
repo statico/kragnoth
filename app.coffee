@@ -7,6 +7,8 @@ websocket = require 'websocket'
 http = require 'http'
 {vec2} = require 'gl-matrix'
 
+{SparseMap, DenseMap} = require './lib/map'
+
 # TODO: Inject
 WEB_PORT = 8080
 CNC_PORT = 8081
@@ -85,6 +87,7 @@ class Scheduler
       msg = JSON.parse if event.type is 'utf8' then event.utf8Data else event.binaryData
       if msg.type is 'input'
         @nextInput = msg.direction
+    @send type: 'init', width: @world.level.width, height: @world.level.height
   send: (obj) -> @playerConn.sendUTF JSON.stringify obj
   start: ->
     doTick = =>
@@ -92,12 +95,6 @@ class Scheduler
       @tick++
       diff = @world.simulate(direction: @nextInput)
       @nextInput = null
-      ###
-      @send
-        type: 'state'
-        tick: @tick
-        state: @world.toJSON()
-      ###
       @send
         type: 'diff'
         tick: @tick
@@ -181,48 +178,6 @@ class Level
       height: @height
       terrain: @terrain.toJSON()
     }
-
-class Map
-  constructor: (@width, @height) ->
-  get: (x, y) ->
-    return @map[y]?[x]
-  toJSON: ->
-    return {
-      width: @width
-      height: @height
-      map: @map
-    }
-  @fromJSON: (obj) ->
-    map = new this
-    map.map = obj.map
-    map.width = obj.width
-    map.height = obj.height
-    return map
-
-class SparseMap extends Map
-  constructor: (@width, @height) ->
-    @map = {}
-  set: (x, y, value) ->
-    @map[y] ?= {}
-    @map[y][x] = value
-    return value
-  delete: (x, y) ->
-    if @map[y]?
-      delete @map[y][x]
-      delete @map[y] unless Objects.keys(@map[y]).length
-    return
-
-class DenseMap extends Map
-  constructor: (@width, @height) ->
-    @map = new Array(@height)
-    @map[i] = new Array(@width) for i in [0...@height]
-  set: (x, y, value) ->
-    @map[y] ?= new Array(@width)
-    @map[y][x] = value
-    return value
-  delete: (x, y) ->
-    @map[y]?[x] = null
-    return
 
 class Player
   constructor: (@name) ->

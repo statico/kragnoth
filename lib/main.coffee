@@ -1,6 +1,8 @@
-#angular = require 'angular'
 keymaster = require 'keymaster'
 
+{DenseMap} = require './map.coffee'
+
+SIZE = 20
 canvas = document.createElement 'canvas'
 document.body.appendChild canvas
 ctx = canvas.getContext '2d'
@@ -10,7 +12,7 @@ ctx.webkitImageSmoothingEnabled = false
 info = document.createElement 'div'
 document.body.appendChild info
 
-gameSocket = null
+gameSocket = view = null
 
 cncSocket = new WebSocket('ws://127.0.0.1:8081', ['cnc'])
 cncSocket.onopen = ->
@@ -22,48 +24,35 @@ cncSocket.onmessage = (event) ->
     gameSocket.onmessage = (event) ->
       msg = JSON.parse event.data
 
-      if msg.type is 'state'
-        info.innerText = "Tick: #{ msg.tick }\nPlayer: #{ msg.state.player.name }"
+      if msg.type is 'init'
+        {width, height} = msg
+        view = new DenseMap(width, height)
+        view.fill -> {}
+        canvas.width = width * SIZE
+        canvas.height = height * SIZE
 
-        SIZE = 20
-        terrain = msg.state.level.terrain
-        w = terrain.width
-        h = terrain.height
-        canvas.width = w * SIZE
-        canvas.height = h * SIZE
-        for y in [0...h]
-          for x in [0...w]
-            switch terrain.map[y][x]
-              when 0 then ctx.fillStyle = '#333'
-              when 1 then ctx.fillStyle = '#999'
-              when 2 then ctx.fillStyle = '#ccc'
-              when 3 then ctx.fillStyle = '#806424'
-              else ctx.fillStyle = '#0c0'
-            ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
+      if msg.type is 'diff'
+        {tick, diff} = msg
+        info.innerText = "Tick: #{ tick }\nPlayer: #{ msg.player.name }"
 
-        [x, y] = msg.state.player.pos
-        ctx.fillStyle = '#DBA4D9'
-        ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
-
-      else if msg.type is 'diff'
-        info.innerText = "Tick: #{ msg.tick }\nPlayer: #{ msg.player.name }"
-
-        SIZE = 20
-        diff = msg.diff
-        w = diff.width
-        h = diff.height
-        canvas.width = w * SIZE
-        canvas.height = h * SIZE
-        ctx.clearRect 0, 0, canvas.width, canvas.height
         for y, row of diff.map
           for x, obj of row
-            switch obj.terrain
-              when 0 then ctx.fillStyle = '#333'
-              when 1 then ctx.fillStyle = '#999'
-              when 2 then ctx.fillStyle = '#ccc'
-              when 3 then ctx.fillStyle = '#806424'
-              else ctx.fillStyle = '#0c0'
-            ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
+            state = view.get x, y
+            state.tick = tick
+            state.terrain = obj.terrain
+
+        ctx.clearRect 0, 0, canvas.width, canvas.height
+        for y, row of view.map
+          for x, obj of row
+            ctx.globalAlpha = if obj.tick is tick then 1.0 else 0.3
+            style = switch obj.terrain
+              when 0 then '#333'
+              when 1 then '#999'
+              when 2 then '#ccc'
+              when 3 then '#806424'
+            if style
+              ctx.fillStyle = style
+              ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
 
         [x, y] = msg.player.pos
         ctx.fillStyle = '#DBA4D9'
