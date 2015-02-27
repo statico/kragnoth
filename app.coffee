@@ -82,24 +82,29 @@ class Scheduler
   constructor: (@world, @playerConn) ->
     @tickSpeed = 100
     @tick = 0
-    @nextInput = null
     @playerConn.on 'message', (event) =>
       msg = JSON.parse if event.type is 'utf8' then event.utf8Data else event.binaryData
       if msg.type is 'input'
-        @nextInput = msg.direction
+        @world.player.lastInput = msg
     @send type: 'init', width: @world.level.width, height: @world.level.height
   send: (obj) -> @playerConn.sendUTF JSON.stringify obj
   start: ->
     doTick = =>
       start = Date.now()
       @tick++
-      diff = @world.simulate(direction: @nextInput)
-      @nextInput = null
+      diff = @world.simulate()
+      [x, y] = @world.monster.pos
+      if diff.get x, y
+        monster = @world.monster.pos
+      else
+        monster = null
       @send
-        type: 'diff'
+        type: 'tick'
         tick: @tick
         player: @world.player.toJSON()
-        diff: diff
+        monster: monster
+        diff: diff.toJSON()
+        messages: @world.messages
       next = (start + @tickSpeed) - Date.now()
       @timer = setTimeout doTick, if next < 0 then 0 else next
     doTick()
@@ -110,25 +115,36 @@ class World
   constructor: (playerName) ->
     @level = new Level()
     @player = new Player(playerName)
-  simulate: (input) ->
+    @monster = new Monster()
 
-    # process player input
-    delta = switch input.direction
-      when 'n' then [0, -1]
-      when 's' then [0, 1]
-      when 'e' then [1, 0]
-      when 'w' then [-1, 0]
-      when 'nw' then [-1, -1]
-      when 'sw' then [-1, 1]
-      when 'ne' then [1, -1]
-      when 'se' then [1, 1]
-      else [0, 0]
-    next = [0, 0]
-    vec2.add next, @player.pos, delta
-    vec2.min next, next, [@level.width - 1, @level.height - 1]
-    vec2.max next, next, [0, 0]
-    tile = @level.terrain.get next[0], next[1]
-    vec2.copy @player.pos, next if tile in [2, 3]
+  simulate: ->
+
+    updatePos = (pos, dir) =>
+      delta = switch dir
+        when 'n' then [0, -1]
+        when 's' then [0, 1]
+        when 'e' then [1, 0]
+        when 'w' then [-1, 0]
+        when 'nw' then [-1, -1]
+        when 'sw' then [-1, 1]
+        when 'ne' then [1, -1]
+        when 'se' then [1, 1]
+        else [0, 0]
+      next = [0, 0]
+      vec2.add next, pos, delta
+      vec2.min next, next, [@level.width - 1, @level.height - 1]
+      vec2.max next, next, [0, 0]
+      tile = @level.terrain.get next[0], next[1]
+      if tile in [2, 3]
+        vec2.copy pos, next
+
+    command = @player.simulate()
+    if command?.command is 'move'
+      updatePos @player.pos, command.direction
+
+    command = @monster.simulate()
+    if command?.command is 'move'
+      updatePos @monster.pos, command.direction
 
     # computer what areas the player can see
     diff = new SparseMap(@level.width, @level.height)
@@ -139,7 +155,7 @@ class World
       # for now, just send terrain data
       diff.set x, y, terrain: @level.terrain.get x, y
 
-    return diff.toJSON()
+    return diff
 
   toJSON: ->
     return {
@@ -182,6 +198,26 @@ class Level
 class Player
   constructor: (@name) ->
     @pos = [3, 3]
+    @lastInput = null
+  simulate: ->
+    if @lastInput
+      command = { command: 'move', direction: @lastInput.direction }
+      @lastInput = null
+    return command
+  toJSON: ->
+    return {
+      name: @name
+      pos: @pos
+    }
+
+class Monster
+  constructor: ->
+    @name = 'mosquito'
+    @pos = [10, 10]
+  simulate: ->
+    directions = 'n w s e nw sw se ne'.split ' '
+    dir = directions[Math.floor(Math.random() * directions.length)]
+    return { command: 'move', direction: dir }
   toJSON: ->
     return {
       name: @name

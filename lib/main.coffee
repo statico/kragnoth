@@ -31,9 +31,14 @@ cncSocket.onmessage = (event) ->
         canvas.width = width * SIZE
         canvas.height = height * SIZE
 
-      if msg.type is 'diff'
-        {tick, diff} = msg
-        info.innerText = "Tick: #{ tick }\nPlayer: #{ msg.player.name }"
+      if msg.type is 'tick'
+        {tick, diff, messages} = msg
+        info.innerHTML = """
+          Tick: #{ tick }<br>
+          <div style="color: yellow">
+            #{ (messages ? []).join '<br>' }
+          </div>
+          """
 
         for y, row of diff.map
           for x, obj of row
@@ -57,6 +62,11 @@ cncSocket.onmessage = (event) ->
         [x, y] = msg.player.pos
         ctx.fillStyle = '#DBA4D9'
         ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
+
+        if msg.monster
+          [x, y] = msg.monster
+          ctx.fillStyle = '#0f0'
+          ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
 
   return
 
