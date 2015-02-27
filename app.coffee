@@ -44,12 +44,50 @@ cncServer.listen CNC_PORT, -> console.log "CNC server on #{ CNC_PORT }"
 cncWSServer = new websocket.server(httpServer: cncServer)
 cncWSServer.on 'request', (req) ->
   conn = req.accept 'cnc', req.origin
-  console.log 'Accepted CNC connection', conn.id
-  conn.sendUTF JSON.stringify type: 'hello'
-  conn.sendUTF JSON.stringify type: 'connect', url: "ws://127.0.0.1:#{ GAME_PORT }/"
-  conn.on 'message', (msg) ->
-    console.log "XXXX CNC input type=#{ msg.type }: #{ msg }"
+  console.log 'Accepted CNC connection', conn
+  conn.on 'message', (event) ->
+    msg = JSON.parse if event.type is 'utf8' then event.utf8Data else event.binaryData
+    console.log 'XXX', 'CNC message', msg
   conn.on 'close', ->
-    console.log 'XXX', 'CNC closed', conn.id
+    console.log 'XXX', 'CNC closed'
   conn.on 'error', (err) ->
     console.log 'XXX', 'CNC error', err
+  conn.sendUTF JSON.stringify type: 'hello'
+  conn.sendUTF JSON.stringify type: 'connect', url: "ws://127.0.0.1:#{ GAME_PORT }/"
+
+gameServer = http.createServer()
+gameServer.listen GAME_PORT, -> console.log "Game server on #{ GAME_PORT }"
+
+gameWSServer = new websocket.server(httpServer: gameServer)
+gameWSServer.on 'request', (req) ->
+  conn = req.accept 'game', req.origin
+  console.log 'Accepted Game connection'
+  conn.on 'message', (event) ->
+    msg = JSON.parse if event.type is 'utf8' then event.utf8data else event.binaryData
+    console.log 'XXX', 'Game message', msg
+  conn.on 'close', ->
+    console.log 'XXX', 'Game closed'
+  conn.on 'error', (err) ->
+    console.log 'XXX', 'Game error', err
+  conn.sendUTF JSON.stringify type: 'hello game'
+  conn.sendUTF JSON.stringify
+    type: 'state'
+    terrain:
+      width: 40
+      height: 14
+      content: [
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+        [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0]
+        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,3,3,3,3,3,2,2,2,2,2,2,2,2,1,0,0,0]
+        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,3,3,0,0,0,1,2,2,2,2,2,2,2,2,1,0,0,0]
+        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,0,0,0,0,1,2,2,2,2,2,2,2,2,1,0,0,0]
+        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,0,0,0,0,1,1,1,3,1,1,1,1,1,1,0,0,0]
+        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0]
+        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0]
+        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,1,1,1,1,1,1,1,3,1,1,1,1,1,1,0,0,0]
+        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0]
+        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0]
+        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0]
+        [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0]
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+      ]
