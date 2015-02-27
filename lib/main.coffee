@@ -11,6 +11,10 @@ ctx.webkitImageSmoothingEnabled = false
 
 info = document.createElement 'div'
 document.body.appendChild info
+log = document.createElement 'div'
+log.style.color = 'yellow'
+log.style.height = '5em'
+document.body.appendChild log
 
 gameSocket = view = null
 
@@ -33,12 +37,9 @@ cncSocket.onmessage = (event) ->
 
       if msg.type is 'tick'
         {tick, diff, messages} = msg
-        info.innerHTML = """
-          Tick: #{ tick }<br>
-          <div style="color: yellow">
-            #{ (messages ? []).join '<br>' }
-          </div>
-          """
+        info.innerText = "Tick: #{ tick }"
+        if messages?.length
+          log.innerText = messages.join('\n') + '\n' + log.innerText
 
         for y, row of diff.map
           for x, obj of row

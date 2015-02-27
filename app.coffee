@@ -128,7 +128,7 @@ class World
   simulate: (tickSpeed, tick) ->
     @messages = []
 
-    updatePos = (pos, dir) =>
+    updatePos = (pos, dir, isPlayer) =>
       delta = switch dir
         when 'n' then [0, -1]
         when 's' then [0, 1]
@@ -149,12 +149,14 @@ class World
         vec2.copy pos, next
         return true
       else
+        if isPlayer and actor
+          @messages.push "#{ actor.name } is in the way"
         return false
 
     command = @player.simulate()
     if command?.command is 'move'
       oldPos = vec2.copy [0,0], @player.pos
-      if updatePos @player.pos, command.direction
+      if updatePos @player.pos, command.direction, true
         @level.actors.delete oldPos[0], oldPos[1]
         @level.actors.set @player.pos[0], @player.pos[1], @player
 
@@ -165,7 +167,7 @@ class World
       command = monster.simulate()
       if command?.command is 'move'
         oldPos = vec2.copy [0,0], monster.pos
-        if updatePos monster.pos, command.direction
+        if updatePos monster.pos, command.direction, false
           @level.actors.delete oldPos[0], oldPos[1]
           @level.actors.set monster.pos[0], monster.pos[1], monster
       monster.lastTick = tick
