@@ -23,6 +23,8 @@
   - ClientWorld - incomplete World state
   - ClientLevel - incomplete state that the party has seen
   - ClientPeer - handles input commands and sends them to the server
+- AI
+  - speed should be specified in "number of ticks per second" -- use tickPeriod
 
 # server-side
 - authentication

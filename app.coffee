@@ -44,7 +44,7 @@ cncServer.listen CNC_PORT, -> console.log "CNC server on #{ CNC_PORT }"
 cncWSServer = new websocket.server(httpServer: cncServer)
 cncWSServer.on 'request', (req) ->
   conn = req.accept 'cnc', req.origin
-  console.log 'Accepted CNC connection', conn
+  console.log 'Accepted CNC connection'
   conn.on 'message', (event) ->
     msg = JSON.parse if event.type is 'utf8' then event.utf8Data else event.binaryData
     console.log 'XXX', 'CNC message', msg
@@ -65,17 +65,53 @@ gameWSServer.on 'request', (req) ->
   conn.on 'message', (event) ->
     msg = JSON.parse if event.type is 'utf8' then event.utf8data else event.binaryData
     console.log 'XXX', 'Game message', msg
-  conn.on 'close', ->
-    console.log 'XXX', 'Game closed'
   conn.on 'error', (err) ->
     console.log 'XXX', 'Game error', err
-  conn.sendUTF JSON.stringify type: 'hello game'
-  conn.sendUTF JSON.stringify
-    type: 'state'
-    terrain:
+
+  world = new World('player1')
+  scheduler = new Scheduler(world, conn)
+  scheduler.start()
+  conn.on 'close', ->
+    scheduler.end()
+
+class Scheduler
+  constructor: (@world, @playerConn) ->
+    @tickSpeed = 250
+    @tick = 0
+  send: (obj) -> @playerConn.sendUTF JSON.stringify obj
+  start: ->
+    doTick = =>
+      start = Date.now()
+      @tick++
+      @world.simulate()
+      @send
+        type: 'state'
+        tick: @tick
+        state: @world.toJSON()
+      next = (start + @tickSpeed) - Date.now()
+      @timer = setTimeout doTick, if next < 0 then 0 else next
+    doTick()
+  end: ->
+    clearTimeout @timer
+
+class World
+  constructor: (playerName) ->
+    @level = new Level()
+    @player = new Player(playerName)
+  simulate: ->
+  toJSON: ->
+    return {
+      player: @player.toJSON()
+      level: @level.toJSON()
+    }
+
+class Level
+  constructor: ->
+    @name = null
+    @terrain = DenseMap.fromJSON
       width: 40
       height: 14
-      content: [
+      map: [
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
         [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0]
         [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,3,3,3,3,3,2,2,2,2,2,2,2,2,1,0,0,0]
@@ -91,3 +127,60 @@ gameWSServer.on 'request', (req) ->
         [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0]
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
       ]
+  toJSON: ->
+    return {
+      name: @name
+      terrain: @terrain.toJSON()
+    }
+
+class Map
+  constructor: (@width, @height) ->
+  get: (x, y) ->
+    return @map[y]?[x]
+  toJSON: ->
+    return {
+      width: @width
+      height: @height
+      map: @map
+    }
+  @fromJSON: (obj) ->
+    map = new this
+    console.log 'XXX', this
+    map.map = obj.map
+    map.width = obj.width
+    map.height = obj.height
+    return map
+
+class SparseMap extends Map
+  constructor: (@width, @height) ->
+    @map = {}
+  set: (x, y, value) ->
+    @map[y] ?= {}
+    @map[y][x] = value
+    return value
+  delete: (x, y) ->
+    if @map[y]?
+      delete @map[y][x]
+      delete @map[y] unless Objects.keys(@map[y]).length
+    return
+
+class DenseMap extends Map
+  constructor: (@width, @height) ->
+    @map = new Array(@height)
+    @map[i] = new Array(@width) for i in [0...@height]
+  set: (x, y, value) ->
+    @map[y] ?= new Array(@width)
+    @map[y][x] = value
+    return value
+  delete: (x, y) ->
+    @map[y]?[x] = null
+    return
+
+class Player
+  constructor: (@name) ->
+    @pos = [0, 0]
+  toJSON: ->
+    return {
+      name: @name
+      pos: @pos
+    }

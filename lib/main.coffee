@@ -1,10 +1,14 @@
 #angular = require 'angular'
+keymaster = require 'keymaster'
 
 canvas = document.createElement 'canvas'
 document.body.appendChild canvas
 ctx = canvas.getContext '2d'
 ctx.imageSmoothingEnabled = false
 ctx.webkitImageSmoothingEnabled = false
+
+info = document.createElement 'div'
+document.body.appendChild info
 
 gameSocket = null
 
@@ -18,16 +22,18 @@ cncSocket.onmessage = (event) ->
     gameSocket.onmessage = (event) ->
       msg = JSON.parse event.data
       if msg.type is 'state'
+        info.innerText = "Tick: #{ msg.tick }"
 
         SIZE = 20
-        w = msg.terrain.width
-        h = msg.terrain.height
+        terrain = msg.state.level.terrain
+        w = terrain.width
+        h = terrain.height
         canvas.width = w * SIZE
         canvas.height = h * SIZE
         imageData = ctx.getImageData 0, 0, canvas.width, canvas.height
         for y in [0...h]
           for x in [0...w]
-            switch msg.terrain.content[y][x]
+            switch terrain.map[y][x]
               when 0 then ctx.fillStyle = '#333'
               when 1 then ctx.fillStyle = '#999'
               when 2 then ctx.fillStyle = '#ccc'
