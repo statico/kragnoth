@@ -22,7 +22,7 @@ cncSocket.onmessage = (event) ->
     gameSocket.onmessage = (event) ->
       msg = JSON.parse event.data
       if msg.type is 'state'
-        info.innerText = "Tick: #{ msg.tick }"
+        info.innerText = "Tick: #{ msg.tick }\nPlayer: #{ msg.state.player.name }"
 
         SIZE = 20
         terrain = msg.state.level.terrain
@@ -40,4 +40,9 @@ cncSocket.onmessage = (event) ->
               when 3 then ctx.fillStyle = '#806424'
               else ctx.fillStyle = '#0c0'
             ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
+
+        [x, y] = msg.state.player.pos
+        ctx.fillStyle = '#DBA4D9'
+        ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
+
   return
