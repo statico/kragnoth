@@ -60,6 +60,13 @@ cncSocket.onmessage = (event) ->
               ctx.fillStyle = style
               ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
 
+        ctx.globalAlpha = 1.0
+
+        for item in msg.items
+          [x, y] = item.pos
+          ctx.fillStyle = 'gold'
+          ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
+
         [x, y] = msg.player.pos
         ctx.fillStyle = '#C979C7'
         ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
@@ -67,7 +74,7 @@ cncSocket.onmessage = (event) ->
         for monster in msg.monsters
           [x, y] = monster.pos
           style = switch monster.name
-            when 'mosquito' then '#0f0'
+            when 'mosquito' then '#45A9C4'
             when 'slug' then '#00c'
           ctx.fillStyle = style
           ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
@@ -75,7 +82,8 @@ cncSocket.onmessage = (event) ->
   return
 
 sendInput = (dir) ->
-  gameSocket?.send JSON.stringify type: 'input', direction: dir
+  gameSocket?.send JSON.stringify type: 'input', command: 'attack-move', direction: dir
 for key, dir of {h: 'w', j: 's', k: 'n', l: 'e', y: 'nw', u: 'ne', b: 'sw', n: 'se'}
   do (key, dir) ->
     keymaster key, -> sendInput dir
+keymaster '.', -> gameSocket?.send JSON.stringify type: 'input', command: 'pickup'

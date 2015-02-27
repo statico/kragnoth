@@ -97,11 +97,17 @@ class Scheduler
       for monster in @world.monsters
         [x, y] = monster.pos
         monsters.push monster.toViewJSON() if diff.get x, y
+      items = []
+      for item in @world.items
+        [x, y] = item.pos
+        if diff.get x, y
+          items.push item.toViewJSON()
       @send
         type: 'tick'
         tick: @tick
         player: @world.player.toJSON()
         monsters: monsters
+        items: items
         diff: diff.toJSON()
         messages: @world.messages
       next = (start + @tickSpeed) - Date.now()
@@ -123,6 +129,15 @@ class World
       monster.lastTick = Math.floor(Math.random() * 10)
       monster.pos = @level.pickRandomSpawnablePosition()
       @level.actors.set monster.pos[0], monster.pos[1], monster
+
+    @items = []
+    for i in [0..7]
+      item = new Item()
+      @items.push item
+      [x, y] = item.pos = @level.pickRandomSpawnablePosition()
+      pile = @level.items.get(x, y) ? []
+      pile.push item
+      @level.items.set x, y, pile
 
     @messages = null
 
@@ -152,8 +167,11 @@ class World
       vec2.max next, next, [0, 0]
       tile = @level.terrain.get next[0], next[1]
       neighbor = @level.actors.get next[0], next[1]
+
+      moved = false
       if command in ['move', 'attack-move']
         if tile in [2, 3] and not neighbor
+          moved = true
           vec2.copy actor.pos, next
         if actor.isPlayer and neighbor and command != 'attack-move'
           @messages.push "#{ neighbor.name } is in the way"
@@ -172,12 +190,33 @@ class World
         if attacker.isPlayer
           @messages.push "You kill the #{ defender.name }!"
 
+    handlePickup = (actor) =>
+      [x, y] = actor.pos
+      pile = @level.items.get x, y
+      if pile?.length
+        @level.items.delete x, y
+        loop
+          item = pile.shift()
+          index = @items.indexOf item
+          @items.splice index, 1 if index != -1
+          actor.gold += item.value
+          if actor.isPlayer
+            @messages.push "You pick up #{ item.value } gold"
+          else
+            @messages.push "The #{ actor.name } picks up #{ item.value } gold"
+          break unless pile.length
+      else
+        if actor.isPlayer
+          @messages.push "There is nothing here to pickup"
+
     command = @player.simulate()
     if command?.command in ['move', 'attack-move', 'attack']
       oldPos = vec2.copy [0,0], @player.pos
       updatePos @player, command.command, command.direction
       @level.actors.delete oldPos[0], oldPos[1]
       @level.actors.set @player.pos[0], @player.pos[1], @player
+    if command?.command is 'pickup'
+      handlePickup @player
 
     for monster in @monsters
       delta = (tick - monster.lastTick) * tickSpeed
@@ -188,6 +227,8 @@ class World
         updatePos monster, command.command, command.direction
         @level.actors.delete oldPos[0], oldPos[1]
         @level.actors.set monster.pos[0], monster.pos[1], monster
+      if command?.command is 'pickup'
+        handlePickup monster
       monster.lastTick = tick
 
     # computer what areas the player can see
@@ -213,6 +254,7 @@ class Level
     @width = 40
     @height = 14
     @actors = new SparseMap(@width, @height)
+    @items = new SparseMap(@width, @height)
     @terrain = DenseMap.fromJSON
       width: @width
       height: @height
@@ -253,9 +295,10 @@ class Player
     @isPlayer = true
     @ap = 5
     @hp = 50
+    @gold = 0
   simulate: ->
     if @lastInput
-      command = { command: 'attack-move', direction: @lastInput.direction }
+      command = { command: @lastInput.command, direction: @lastInput.direction }
       @lastInput = null
     return command
   toJSON: ->
@@ -267,6 +310,7 @@ class Player
 class Monster
   constructor: ->
     @isPlayer = false
+    @gold = 0
   simulate: ->
     directions = 'n w s e nw sw se ne'.split ' '
     dir = directions[Math.floor(Math.random() * directions.length)]
@@ -300,3 +344,14 @@ class Slug extends Monster
     @speed = 1
     @hp = 10
     @ap = 0
+
+class Item
+  constructor: ->
+    @name = 'gold'
+    @pos = [3, 3]
+    @value = 10
+  toViewJSON: ->
+    return {
+      name: @name
+      pos: @pos
+    }
