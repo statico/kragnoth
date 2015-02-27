@@ -60,7 +60,7 @@ cncSocket.onmessage = (event) ->
               ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
 
         [x, y] = msg.player.pos
-        ctx.fillStyle = '#DBA4D9'
+        ctx.fillStyle = '#C979C7'
         ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
 
         for monster in msg.monsters

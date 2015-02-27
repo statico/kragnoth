@@ -1,5 +1,6 @@
 # architecture
 - server
+  - all server-side objects have all state -- no data hiding, sanitizing user input is up to the game master
   - World - holds levels, players, all state
     - builds Levels with a LevelBuilder
   - Level - one active per world at one time

@@ -92,7 +92,7 @@ class Scheduler
     doTick = =>
       start = Date.now()
       @tick++
-      diff = @world.simulate()
+      diff = @world.simulate(@tickSpeed, @tick)
       monsters = []
       for monster in @world.monsters
         [x, y] = monster.pos
@@ -116,7 +116,7 @@ class World
     @player = new Player(playerName)
     @monsters = [new Mosquito(), new Slug()]
 
-  simulate: ->
+  simulate: (tickSpeed, tick) ->
 
     updatePos = (pos, dir) =>
       delta = switch dir
@@ -142,9 +142,13 @@ class World
       updatePos @player.pos, command.direction
 
     for monster in @monsters
+      monster.lastTick ?= tick
+      delta = (tick - monster.lastTick) * tickSpeed
+      continue unless delta >= 1000 / monster.speed
       command = monster.simulate()
       if command?.command is 'move'
         updatePos monster.pos, command.direction
+      monster.lastTick = tick
 
     # computer what areas the player can see
     diff = new SparseMap(@level.width, @level.height)
