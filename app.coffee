@@ -118,8 +118,9 @@ class World
     @player.pos = @level.pickRandomSpawnablePosition()
     @level.actors.set @player.pos[0], @player.pos[1], @player
 
-    @monsters = [new Mosquito(), new Slug()]
+    @monsters = [new Mosquito(), new Slug(), new Slug(), new Slug(), new Slug()]
     for monster in @monsters
+      monster.lastTick = Math.floor(Math.random() * 10)
       monster.pos = @level.pickRandomSpawnablePosition()
       @level.actors.set monster.pos[0], monster.pos[1], monster
 
@@ -161,7 +162,6 @@ class World
         @level.actors.set @player.pos[0], @player.pos[1], @player
 
     for monster in @monsters
-      monster.lastTick ?= tick
       delta = (tick - monster.lastTick) * tickSpeed
       continue unless delta >= 1000 / monster.speed
       command = monster.simulate()
