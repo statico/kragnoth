@@ -49,7 +49,6 @@ cncSocket.onmessage = (event) ->
 
 sendInput = (dir) ->
   gameSocket?.send JSON.stringify type: 'input', direction: dir
-keymaster 'h', -> sendInput 'w'
-keymaster 'j', -> sendInput 's'
-keymaster 'k', -> sendInput 'n'
-keymaster 'l', -> sendInput 'e'
+for key, dir of {h: 'w', j: 's', k: 'n', l: 'e', y: 'nw', u: 'ne', b: 'sw', n: 'se'}
+  do (key, dir) ->
+    keymaster key, -> sendInput dir

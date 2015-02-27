@@ -111,10 +111,17 @@ class World
       when 's' then [0, 1]
       when 'e' then [1, 0]
       when 'w' then [-1, 0]
+      when 'nw' then [-1, -1]
+      when 'sw' then [-1, 1]
+      when 'ne' then [1, -1]
+      when 'se' then [1, 1]
       else [0, 0]
-    vec2.add @player.pos, @player.pos, delta
-    vec2.min @player.pos, @player.pos, [@level.width - 1, @level.height - 1]
-    vec2.max @player.pos, @player.pos, [0, 0]
+    next = [0, 0]
+    vec2.add next, @player.pos, delta
+    vec2.min next, next, [@level.width - 1, @level.height - 1]
+    vec2.max next, next, [0, 0]
+    tile = @level.terrain.get next[0], next[1]
+    vec2.copy @player.pos, next if tile in [2, 3]
 
   toJSON: ->
     return {
@@ -198,7 +205,7 @@ class DenseMap extends Map
 
 class Player
   constructor: (@name) ->
-    @pos = [0, 0]
+    @pos = [3, 3]
   toJSON: ->
     return {
       name: @name
