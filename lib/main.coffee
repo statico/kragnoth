@@ -49,7 +49,7 @@ cncSocket.onmessage = (event) ->
         ctx.clearRect 0, 0, canvas.width, canvas.height
         for y, row of view.map
           for x, obj of row
-            ctx.globalAlpha = if obj.tick is tick then 1.0 else 0.3
+            ctx.globalAlpha = if obj.tick is tick then 1.0 else 0.4
             style = switch obj.terrain
               when 0 then '#333'
               when 1 then '#999'

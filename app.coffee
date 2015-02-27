@@ -115,8 +115,14 @@ class World
     @level = new Level()
     @player = new Player(playerName)
     @monsters = [new Mosquito(), new Slug()]
+    @messages = null
+
+    for actor in [@player].concat @monsters
+      [x, y] = actor.pos
+      @level.actors.set x, y, actor
 
   simulate: (tickSpeed, tick) ->
+    @messages = []
 
     updatePos = (pos, dir) =>
       delta = switch dir
@@ -134,12 +140,19 @@ class World
       vec2.min next, next, [@level.width - 1, @level.height - 1]
       vec2.max next, next, [0, 0]
       tile = @level.terrain.get next[0], next[1]
-      if tile in [2, 3]
+      actor = @level.actors.get next[0], next[1]
+      if tile in [2, 3] and not actor
         vec2.copy pos, next
+        return true
+      else
+        return false
 
     command = @player.simulate()
     if command?.command is 'move'
-      updatePos @player.pos, command.direction
+      oldPos = vec2.copy [0,0], @player.pos
+      if updatePos @player.pos, command.direction
+        @level.actors.delete oldPos[0], oldPos[1]
+        @level.actors.set @player.pos[0], @player.pos[1], @player
 
     for monster in @monsters
       monster.lastTick ?= tick
@@ -147,8 +160,13 @@ class World
       continue unless delta >= 1000 / monster.speed
       command = monster.simulate()
       if command?.command is 'move'
-        updatePos monster.pos, command.direction
+        oldPos = vec2.copy [0,0], monster.pos
+        if updatePos monster.pos, command.direction
+          @level.actors.delete oldPos[0], oldPos[1]
+          @level.actors.set monster.pos[0], monster.pos[1], monster
       monster.lastTick = tick
+
+    console.log 'XXX', @level.actors
 
     # computer what areas the player can see
     diff = new SparseMap(@level.width, @level.height)
@@ -172,6 +190,7 @@ class Level
     @name = null
     @width = 40
     @height = 14
+    @actors = new SparseMap(@width, @height)
     @terrain = DenseMap.fromJSON
       width: @width
       height: @height

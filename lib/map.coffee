@@ -25,7 +25,7 @@ class SparseMap extends Map
   delete: (x, y) ->
     if @map[y]?
       delete @map[y][x]
-      delete @map[y] unless Objects.keys(@map[y]).length
+      delete @map[y] unless Object.keys(@map[y]).length
     return
 
 class DenseMap extends Map
