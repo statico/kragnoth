@@ -113,13 +113,17 @@ class Scheduler
 class World
   constructor: (playerName) ->
     @level = new Level()
-    @player = new Player(playerName)
-    @monsters = [new Mosquito(), new Slug()]
-    @messages = null
 
-    for actor in [@player].concat @monsters
-      [x, y] = actor.pos
-      @level.actors.set x, y, actor
+    @player = new Player(playerName)
+    @player.pos = @level.pickRandomSpawnablePosition()
+    @level.actors.set @player.pos[0], @player.pos[1], @player
+
+    @monsters = [new Mosquito(), new Slug()]
+    for monster in @monsters
+      monster.pos = @level.pickRandomSpawnablePosition()
+      @level.actors.set monster.pos[0], monster.pos[1], monster
+
+    @messages = null
 
   simulate: (tickSpeed, tick) ->
     @messages = []
@@ -166,8 +170,6 @@ class World
           @level.actors.set monster.pos[0], monster.pos[1], monster
       monster.lastTick = tick
 
-    console.log 'XXX', @level.actors
-
     # computer what areas the player can see
     diff = new SparseMap(@level.width, @level.height)
     test = (x, y) => @level.terrain.get(x, y) in [2, 3]
@@ -210,6 +212,12 @@ class Level
         [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0]
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
       ]
+  pickRandomSpawnablePosition: ->
+    loop
+      x = Math.floor Math.random() * @width
+      y = Math.floor Math.random() * @height
+      return [x, y] if @terrain.get(x, y) is 2 and not @actors.get(x, y)
+
   toJSON: ->
     return {
       name: @name
