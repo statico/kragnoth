@@ -11,6 +11,7 @@
     "gl-matrix": "^2.1.0",
     "keymaster": "^1.6.2",
     "promise": "^6.1.0",
+    "rot.js": "https://github.com/ondras/rot.js/archive/master.tar.gz",
     "websocket": "^1.0.17"
   }
 }

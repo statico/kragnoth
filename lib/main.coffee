@@ -21,6 +21,7 @@ cncSocket.onmessage = (event) ->
     gameSocket = new WebSocket(msg.url, ['game'])
     gameSocket.onmessage = (event) ->
       msg = JSON.parse event.data
+
       if msg.type is 'state'
         info.innerText = "Tick: #{ msg.tick }\nPlayer: #{ msg.state.player.name }"
 
@@ -30,7 +31,6 @@ cncSocket.onmessage = (event) ->
         h = terrain.height
         canvas.width = w * SIZE
         canvas.height = h * SIZE
-        imageData = ctx.getImageData 0, 0, canvas.width, canvas.height
         for y in [0...h]
           for x in [0...w]
             switch terrain.map[y][x]
@@ -42,6 +42,31 @@ cncSocket.onmessage = (event) ->
             ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
 
         [x, y] = msg.state.player.pos
+        ctx.fillStyle = '#DBA4D9'
+        ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
+
+      else if msg.type is 'diff'
+        info.innerText = "Tick: #{ msg.tick }\nPlayer: #{ msg.player.name }"
+
+        SIZE = 20
+        diff = msg.diff
+        w = diff.width
+        h = diff.height
+        canvas.width = w * SIZE
+        canvas.height = h * SIZE
+        ctx.fillStyle = '#000'
+        ctx.fillRect 0, 0, canvas.width, canvas.height
+        for y, row of diff.map
+          for x, obj of row
+            switch obj.terrain
+              when 0 then ctx.fillStyle = '#333'
+              when 1 then ctx.fillStyle = '#999'
+              when 2 then ctx.fillStyle = '#ccc'
+              when 3 then ctx.fillStyle = '#806424'
+              else ctx.fillStyle = '#0c0'
+            ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
+
+        [x, y] = msg.player.pos
         ctx.fillStyle = '#DBA4D9'
         ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
 

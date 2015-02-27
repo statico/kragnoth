@@ -1,5 +1,6 @@
 #!./node_modules/.bin/coffee
 
+ROT = require 'rot.js'
 express = require 'express'
 browserify = require 'browserify-middleware'
 websocket = require 'websocket'
@@ -89,12 +90,19 @@ class Scheduler
     doTick = =>
       start = Date.now()
       @tick++
-      @world.simulate(direction: @nextInput)
+      diff = @world.simulate(direction: @nextInput)
       @nextInput = null
+      ###
       @send
         type: 'state'
         tick: @tick
         state: @world.toJSON()
+      ###
+      @send
+        type: 'diff'
+        tick: @tick
+        player: @world.player.toJSON()
+        diff: diff
       next = (start + @tickSpeed) - Date.now()
       @timer = setTimeout doTick, if next < 0 then 0 else next
     doTick()
@@ -106,6 +114,8 @@ class World
     @level = new Level()
     @player = new Player(playerName)
   simulate: (input) ->
+
+    # process player input
     delta = switch input.direction
       when 'n' then [0, -1]
       when 's' then [0, 1]
@@ -122,6 +132,17 @@ class World
     vec2.max next, next, [0, 0]
     tile = @level.terrain.get next[0], next[1]
     vec2.copy @player.pos, next if tile in [2, 3]
+
+    # computer what areas the player can see
+    diff = new SparseMap(@level.width, @level.height)
+    test = (x, y) => @level.terrain.get(x, y) in [2, 3]
+    fov = new ROT.FOV.PreciseShadowcasting(test)
+    [x, y] = @player.pos
+    fov.compute x, y, 10, (x, y, _, visible) =>
+      # for now, just send terrain data
+      diff.set x, y, terrain: @level.terrain.get x, y
+
+    return diff.toJSON()
 
   toJSON: ->
     return {
@@ -145,8 +166,8 @@ class Level
         [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,0,0,0,0,1,2,2,2,2,2,2,2,2,1,0,0,0]
         [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,0,0,0,0,1,1,1,3,1,1,1,1,1,1,0,0,0]
         [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0]
-        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0]
-        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,1,1,1,1,1,1,1,3,1,1,1,1,1,1,0,0,0]
+        [0,1,2,2,2,1,2,2,2,2,1,1,2,2,2,2,2,1,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0]
+        [0,1,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,1,0,0,0,0,0,1,1,1,1,1,1,1,3,1,1,1,1,1,1,0,0,0]
         [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0]
         [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0]
         [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0]
