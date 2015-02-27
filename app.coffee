@@ -4,6 +4,7 @@ express = require 'express'
 browserify = require 'browserify-middleware'
 websocket = require 'websocket'
 http = require 'http'
+{vec2} = require 'gl-matrix'
 
 # TODO: Inject
 WEB_PORT = 8080
@@ -63,7 +64,7 @@ gameWSServer.on 'request', (req) ->
   conn = req.accept 'game', req.origin
   console.log 'Accepted Game connection'
   conn.on 'message', (event) ->
-    msg = JSON.parse if event.type is 'utf8' then event.utf8data else event.binaryData
+    msg = JSON.parse if event.type is 'utf8' then event.utf8Data else event.binaryData
     console.log 'XXX', 'Game message', msg
   conn.on 'error', (err) ->
     console.log 'XXX', 'Game error', err
@@ -76,14 +77,20 @@ gameWSServer.on 'request', (req) ->
 
 class Scheduler
   constructor: (@world, @playerConn) ->
-    @tickSpeed = 250
+    @tickSpeed = 100
     @tick = 0
+    @nextInput = null
+    @playerConn.on 'message', (event) =>
+      msg = JSON.parse if event.type is 'utf8' then event.utf8Data else event.binaryData
+      if msg.type is 'input'
+        @nextInput = msg.direction
   send: (obj) -> @playerConn.sendUTF JSON.stringify obj
   start: ->
     doTick = =>
       start = Date.now()
       @tick++
-      @world.simulate()
+      @world.simulate(direction: @nextInput)
+      @nextInput = null
       @send
         type: 'state'
         tick: @tick
@@ -98,7 +105,17 @@ class World
   constructor: (playerName) ->
     @level = new Level()
     @player = new Player(playerName)
-  simulate: ->
+  simulate: (input) ->
+    delta = switch input.direction
+      when 'n' then [0, -1]
+      when 's' then [0, 1]
+      when 'e' then [1, 0]
+      when 'w' then [-1, 0]
+      else [0, 0]
+    vec2.add @player.pos, @player.pos, delta
+    vec2.min @player.pos, @player.pos, [@level.width - 1, @level.height - 1]
+    vec2.max @player.pos, @player.pos, [0, 0]
+
   toJSON: ->
     return {
       player: @player.toJSON()
@@ -108,9 +125,11 @@ class World
 class Level
   constructor: ->
     @name = null
+    @width = 40
+    @height = 14
     @terrain = DenseMap.fromJSON
-      width: 40
-      height: 14
+      width: @width
+      height: @height
       map: [
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
         [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0]
@@ -130,6 +149,8 @@ class Level
   toJSON: ->
     return {
       name: @name
+      width: @width
+      height: @height
       terrain: @terrain.toJSON()
     }
 
@@ -145,7 +166,6 @@ class Map
     }
   @fromJSON: (obj) ->
     map = new this
-    console.log 'XXX', this
     map.map = obj.map
     map.width = obj.width
     map.height = obj.height

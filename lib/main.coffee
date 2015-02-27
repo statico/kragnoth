@@ -46,3 +46,10 @@ cncSocket.onmessage = (event) ->
         ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
 
   return
+
+sendInput = (dir) ->
+  gameSocket?.send JSON.stringify type: 'input', direction: dir
+keymaster 'h', -> sendInput 'w'
+keymaster 'j', -> sendInput 's'
+keymaster 'k', -> sendInput 'n'
+keymaster 'l', -> sendInput 'e'
