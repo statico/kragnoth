@@ -185,8 +185,14 @@ class World
       defender.hp -= attacker.ap
       if attacker.isPlayer
         @messages.push "You hit the #{ defender.name }"
+        if attacker.ap is 0
+          msg += " It seems unaffected."
+        @messages.push msg
       if defender.isPlayer
-        @messages.push "The #{ attacker.name } hits!"
+        msg = "The #{ attacker.name } hits!"
+        if attacker.ap is 0
+          msg += " You seem unaffected."
+        @messages.push msg
       if defender.hp <= 0
         @kill defender
         if attacker.isPlayer
@@ -244,9 +250,11 @@ class World
     test = (x, y) => @level.terrain.get([x, y]) in [2, 3]
     fov = new ROT.FOV.PreciseShadowcasting(test)
     [x, y] = @player.pos
+    temp = [0, 0]
     fov.compute x, y, 10, (x, y, _, visible) =>
       # for now, just send terrain data
-      diff.set [x, y], terrain: @level.terrain.get [x, y]
+      vec2.set temp, x, y
+      diff.set temp, terrain: @level.terrain.get temp
 
     return diff
 
@@ -327,7 +335,7 @@ class Monster
     @gold = 0
   simulate: ->
     dir = random.pick 'n w s e nw sw se ne'.split ' '
-    return { command: 'move', direction: dir }
+    return { command: 'attack-move', direction: dir }
   toJSON: ->
     return {
       name: @name
