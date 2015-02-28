@@ -64,11 +64,14 @@ cncSocket.onmessage = (event) ->
 
         for item in msg.items
           [x, y] = item.pos
-          ctx.fillStyle = 'gold'
+          style = switch item.class
+            when 'gold' then 'gold'
+            when 'weapon' then 'orange'
+          ctx.fillStyle = style
           ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
 
         [x, y] = msg.player.pos
-        ctx.fillStyle = '#C979C7'
+        ctx.fillStyle = 'pink'
         ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
 
         for monster in msg.monsters

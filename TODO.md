@@ -1,3 +1,10 @@
+# immediate TODO
+1. inventory + picking up weapons + swapping primary weapon
+1. multiple levels + staircases
+1. dungeon generation
+1. endgame
+1. wands
+
 # architecture
 - server
   - all server-side objects have all state -- no data hiding, sanitizing user input is up to the game master

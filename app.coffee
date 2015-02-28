@@ -1,10 +1,11 @@
 #!./node_modules/.bin/coffee
 
 ROT = require 'rot.js'
-express = require 'express'
 browserify = require 'browserify-middleware'
-websocket = require 'websocket'
+express = require 'express'
 http = require 'http'
+random = require 'random-ext'
+websocket = require 'websocket'
 {vec2} = require 'gl-matrix'
 
 {SparseMap, DenseMap} = require './lib/map'
@@ -105,7 +106,7 @@ class Scheduler
       @send
         type: 'tick'
         tick: @tick
-        player: @world.player.toJSON()
+        player: @world.player.toViewJSON()
         monsters: monsters
         items: items
         diff: diff.toJSON()
@@ -131,13 +132,14 @@ class World
       @level.actors.set monster.pos[0], monster.pos[1], monster
 
     @items = []
-    for i in [0..7]
-      item = new Item()
-      @items.push item
-      [x, y] = item.pos = @level.pickRandomSpawnablePosition()
-      pile = @level.items.get(x, y) ? []
-      pile.push item
-      @level.items.set x, y, pile
+    for cls in ['gold', 'weapon']
+      for i in [0..7]
+        item = Item.createFromClass cls
+        @items.push item
+        [x, y] = item.pos = @level.pickRandomSpawnablePosition()
+        pile = @level.items.get(x, y) ? []
+        pile.push item
+        @level.items.set x, y, pile
 
     @messages = null
 
@@ -199,11 +201,18 @@ class World
           item = pile.shift()
           index = @items.indexOf item
           @items.splice index, 1 if index != -1
-          actor.gold += item.value
+          switch item.class
+            when 'gold'
+              actor.gold += item.value
+              msg = "#{ item.value } gold"
+            when 'weapon'
+              actor.inventory.push item
+              article = if /aeiouy/.test(item.name) then 'an' else 'a'
+              msg = "#{ article } #{ item.name }"
           if actor.isPlayer
-            @messages.push "You pick up #{ item.value } gold"
+            @messages.push "You pick up #{ msg }"
           else
-            @messages.push "The #{ actor.name } picks up #{ item.value } gold"
+            @messages.push "The #{ actor.name } picks up #{ msg }"
           break unless pile.length
       else
         if actor.isPlayer
@@ -274,6 +283,7 @@ class Level
         [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0]
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
       ]
+
   pickRandomSpawnablePosition: ->
     loop
       x = Math.floor Math.random() * @width
@@ -296,15 +306,17 @@ class Player
     @ap = 5
     @hp = 50
     @gold = 0
+    @inventory = []
   simulate: ->
     if @lastInput
       command = { command: @lastInput.command, direction: @lastInput.direction }
       @lastInput = null
     return command
-  toJSON: ->
+  toViewJSON: ->
     return {
       name: @name
       pos: @pos
+      inventory: (i.toViewJSON() for i in @inventory)
     }
 
 class Monster
@@ -347,11 +359,57 @@ class Slug extends Monster
 
 class Item
   constructor: ->
-    @name = 'gold'
-    @pos = [3, 3]
-    @value = 10
+    @pos = [0, 0]
+  @createFromClass: (cls) ->
+    spec = random.pick(v for k, v of ITEMS when v.class is cls)
+    throw new Error("Unknown item class: #{ cls }") unless spec?
+    item = new this()
+    item.name = spec.name
+    item.class = cls
+    switch cls
+      when 'weapon'
+        item.ap = random.integer spec.apMax, spec.apMin
+      when 'gold'
+        item.value = random.integer 15, 1
+    return item
   toViewJSON: ->
     return {
       name: @name
+      class: @class
       pos: @pos
     }
+
+ITEMS =
+  gold:
+    name: 'pieces of gold'
+    class: 'gold'
+  shortSword:
+    name: 'short sword'
+    class: 'weapon'
+    apMin: 3
+    apMax: 6
+  longSword:
+    name: 'long sword'
+    class: 'weapon'
+    apMin: 4
+    apMax: 8
+  dagger:
+    name: 'dagger'
+    class: 'weapon'
+    apMin: 2
+    apMax: 4
+  sabre:
+    name: 'sabre'
+    class: 'weapon'
+    apMin: 6
+    apMax: 8
+  knife:
+    name: 'knife'
+    class: 'weapon'
+    apMin: 1
+    apMax: 3
+  screwdriver:
+    name: 'screwdriver'
+    class: 'weapon'
+    apMin: 1
+    apMax: 2
