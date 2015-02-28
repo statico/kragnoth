@@ -1,5 +1,4 @@
 # immediate TODO
-1. inventory + picking up weapons + swapping primary weapon
 1. multiple levels + staircases
 1. dungeon generation
 1. endgame

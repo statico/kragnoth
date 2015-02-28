@@ -98,7 +98,7 @@ class Scheduler
       for monster in @world.monsters
         monsters.push monster.toViewJSON() if diff.get monster.pos
       items = []
-      for item in @world.items
+      for _, item of @world.items
         if diff.get item.pos
           items.push item.toViewJSON()
       @send
@@ -117,6 +117,8 @@ class Scheduler
 
 class World
   constructor: (playerName) ->
+    @_nextGUID = 1
+
     @level = new Level()
 
     @player = new Player(playerName)
@@ -125,21 +127,26 @@ class World
 
     @monsters = [new Mosquito(), new Slug(), new Slug(), new Slug(), new Slug()]
     for monster in @monsters
+      monster.id = @getGUID()
       monster.lastTick = random.integer 10
       monster.pos = @level.pickRandomSpawnablePosition()
       @level.actors.set monster.pos, monster
 
-    @items = []
+    @items = {}
     for cls in ['gold', 'weapon']
       for i in [0..7]
         item = Item.createFromClass cls
-        @items.push item
+        item.id = @getGUID()
         item.pos = @level.pickRandomSpawnablePosition()
         pile = @level.items.get(item.pos) ? []
         pile.push item
         @level.items.set item.pos, pile
+        @items[item.id] = item
 
     @messages = null
+
+  getGUID: ->
+    return @_nextGUID++
 
   kill: (actor) ->
     @level.actors.delete actor.pos
@@ -180,9 +187,15 @@ class World
       if command in ['attack-move', 'attack']
         if neighbor
           solveAttack actor, neighbor
+      if moved
+        for item in actor.items
+          vec2.copy item.pos, actor.pos
+      return
 
     solveAttack = (attacker, defender) =>
-      defender.hp -= attacker.ap
+      ap = attacker.ap
+      ap += attacker.weapon.ap if attacker.weapon?
+      defender.hp -= ap
       if attacker.isPlayer
         @messages.push "You hit the #{ defender.name }"
         if attacker.ap is 0
@@ -204,11 +217,10 @@ class World
         @level.items.delete actor.pos
         loop
           item = pile.shift()
-          index = @items.indexOf item
-          @items.splice index, 1 if index != -1
           switch item.class
             when 'gold'
               actor.gold += item.value
+              delete @items[item.id]
               msg = "#{ item.value } gold"
             when 'weapon'
               actor.items.push item
@@ -224,25 +236,34 @@ class World
           @messages.push "There is nothing here to pickup"
 
     command = @player.simulate()
-    if command?.command in ['move', 'attack-move', 'attack']
-      oldPos = vec2.copy [0,0], @player.pos
-      updatePos @player, command.command, command.direction
-      @level.actors.delete oldPos
-      @level.actors.set @player.pos, @player
-    if command?.command is 'pickup'
-      handlePickup @player
+    switch command?.command
+      when 'move', 'attack-move', 'attack'
+        oldPos = vec2.copy [0,0], @player.pos
+        updatePos @player, command.command, command.direction
+        @level.actors.delete oldPos
+        @level.actors.set @player.pos, @player
+      when 'pickup'
+        handlePickup @player
+      when 'choose-item'
+        item = @items[command.id]
+        if item?
+          if item.class = 'weapon'
+            @player.weapon = item
+          else
+            @messages.push "Can't use #{ item.name } as a weapon"
 
     for monster in @monsters
       delta = (tick - monster.lastTick) * tickSpeed
       continue unless delta >= 1000 / monster.speed
       command = monster.simulate()
-      if command?.command in ['move', 'attack-move', 'attack']
-        oldPos = vec2.copy [0,0], monster.pos
-        updatePos monster, command.command, command.direction
-        @level.actors.delete oldPos
-        @level.actors.set monster.pos, monster
-      if command?.command is 'pickup'
-        handlePickup monster
+      switch command?.command
+        when 'move', 'attack-move', 'attack'
+          oldPos = vec2.copy [0,0], monster.pos
+          updatePos monster, command.command, command.direction
+          @level.actors.delete oldPos
+          @level.actors.set monster.pos, monster
+        when 'pickup'
+          handlePickup monster
       monster.lastTick = tick
 
     # computer what areas the player can see
@@ -304,46 +325,54 @@ class Level
       terrain: @terrain.toJSON()
     }
 
-class Player
+class Actor
+  constructor: ->
+    @id = -1
+    @pos = [0, 0]
+    @items = []
+    @weapon = null
+    @gold = 0
+
+class Player extends Actor
   constructor: (@name) ->
-    @pos = [3, 3]
+    super()
     @lastInput = null
     @isPlayer = true
     @ap = 5
     @hp = 50
-    @gold = 0
-    @items = []
   simulate: ->
-    if @lastInput
-      command = { command: @lastInput.command, direction: @lastInput.direction }
-      @lastInput = null
-    return command
+    obj = @lastInput
+    @lastInput = null
+    return obj
   toViewJSON: ->
     return {
+      id: @id
       name: @name
       pos: @pos
       items: (i.toViewJSON() for i in @items)
       gold: @gold
       ap: @ap
       hp: @hp
+      weapon: @weapon?.toViewJSON()
     }
 
-class Monster
+class Monster extends Actor
   constructor: ->
+    super()
     @isPlayer = false
-    @items = []
-    @gold = 0
   simulate: ->
     dir = random.pick 'n w s e nw sw se ne'.split ' '
     return { command: 'attack-move', direction: dir }
   toJSON: ->
     return {
+      id: @id
       name: @name
       pos: @pos
       speed: @speed
     }
   toViewJSON: ->
     return {
+      id: @id
       name: @name
       pos: @pos
     }
@@ -368,6 +397,7 @@ class Slug extends Monster
 
 class Item
   constructor: ->
+    @id = -1
     @pos = [0, 0]
   @createFromClass: (cls) ->
     spec = random.pick(v for k, v of ITEMS when v.class is cls)
@@ -383,6 +413,7 @@ class Item
     return item
   toViewJSON: ->
     return {
+      id: @id
       name: @name
       class: @class
       pos: @pos

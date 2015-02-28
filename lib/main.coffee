@@ -14,6 +14,7 @@ angular.module('kragnoth', [])
   .service('UIService', ($rootScope) ->
     return new class UIService
       constructor: ->
+        @socket = null
         @messages = []
         @tick = -1
         @player = null
@@ -25,12 +26,15 @@ angular.module('kragnoth', [])
         $rootScope.$broadcast 'update'
       updatePlayer: (@player) ->
         $rootScope.$broadcast 'update'
+      chooseItem: (item) ->
+        @socket.send JSON.stringify type: 'input', command: 'choose-item', id: item?.id
   )
   .controller('UIController', ($rootScope, $scope, UIService) ->
     $rootScope.$on 'update', ->
       $scope.messages = UIService.messages
       $scope.tick = UIService.tick
       $scope.player = UIService.player
+      $scope.choose = (item) -> UIService.chooseItem(item)
       $scope.$apply()
   )
 
@@ -47,9 +51,12 @@ el.innerHTML = '''
     <strong>{{ player.name }}</strong><br/>
     Gold: {{ player.gold }}<br/>
     HP: {{ player.hp }}<br/>
+    Weapon: {{ player.weapon.name || 'empty-handed' }}<br/>
     <hr/>
     {{ player.items.length }} items
-    <div ng-repeat="item in player.items">· {{ item.name }}</div>
+    <div ng-repeat="item in player.items" ng-mousedown="choose(item)">
+      · {{ item.name }}
+    </div>
   </div>
   <div style="flex:1">Tick: {{ tick }}</div>
 </div>
@@ -67,6 +74,7 @@ cncSocket.onmessage = (event) ->
   msg = JSON.parse event.data
   if msg.type is 'connect'
     gameSocket = new WebSocket(msg.url, ['game'])
+    uiService.socket = gameSocket
     gameSocket.onmessage = (event) ->
       msg = JSON.parse event.data
 
