@@ -177,17 +177,18 @@ class World
       items = @level.items.get next
 
       moved = false
-      if command in ['move', 'attack-move']
-        if tile in [2, 3, 8, 9] and not neighbor
-          moved = true
-          vec2.copy actor.pos, next
-        if actor.isPlayer and items?.length
-          @messages.push "There are items here: #{ (i.name for i in items).join ', ' }"
-        if actor.isPlayer and neighbor and command != 'attack-move'
-          @messages.push "#{ neighbor.name } is in the way"
-      if command in ['attack-move', 'attack']
-        if neighbor
-          solveAttack actor, neighbor
+      if actor != neighbor
+        if command in ['move', 'attack-move']
+          if tile in [2, 3, 8, 9] and not neighbor
+            moved = true
+            vec2.copy actor.pos, next
+          if actor.isPlayer and items?.length
+            @messages.push "There are items here: #{ (i.name for i in items).join ', ' }"
+          if actor.isPlayer and neighbor and command != 'attack-move'
+            @messages.push "#{ neighbor.name } is in the way"
+        if command in ['attack-move', 'attack']
+          if neighbor
+            solveAttack actor, neighbor
       if moved
         for item in actor.items
           vec2.copy item.pos, actor.pos
