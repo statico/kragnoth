@@ -127,7 +127,7 @@ class World
 
     @monsters = [new Mosquito(), new Slug(), new Slug(), new Slug(), new Slug()]
     for monster in @monsters
-      monster.lastTick = Math.floor(Math.random() * 10)
+      monster.lastTick = random.integer 10
       monster.pos = @level.pickRandomSpawnablePosition()
       @level.actors.set monster.pos[0], monster.pos[1], monster
 
@@ -286,8 +286,8 @@ class Level
 
   pickRandomSpawnablePosition: ->
     loop
-      x = Math.floor Math.random() * @width
-      y = Math.floor Math.random() * @height
+      x = random.integer @width
+      y = random.integer @height
       return [x, y] if @terrain.get(x, y) is 2 and not @actors.get(x, y)
 
   toJSON: ->
@@ -324,8 +324,7 @@ class Monster
     @isPlayer = false
     @gold = 0
   simulate: ->
-    directions = 'n w s e nw sw se ne'.split ' '
-    dir = directions[Math.floor(Math.random() * directions.length)]
+    dir = random.pick 'n w s e nw sw se ne'.split ' '
     return { command: 'move', direction: dir }
   toJSON: ->
     return {
