@@ -128,7 +128,12 @@ cncSocket.onmessage = (event) ->
 
 sendInput = (dir) ->
   gameSocket?.send JSON.stringify type: 'input', command: 'attack-move', direction: dir
-for key, dir of {h: 'w', j: 's', k: 'n', l: 'e', y: 'nw', u: 'ne', b: 'sw', n: 'se'}
+keys = {
+  h: 'w', j: 's', k: 'n', l: 'e',
+  y: 'nw', u: 'ne', b: 'sw', n: 'se',
+  left: 'w', down: 's', up: 'n', right: 'e',
+}
+for key, dir of keys
   do (key, dir) ->
     keymaster key, -> sendInput dir
 keymaster '.', -> gameSocket?.send JSON.stringify type: 'input', command: 'pickup'
