@@ -1,5 +1,5 @@
-ngular = require 'angular'
-keymaster = require 'keymaster'
+angular = require 'angular'
+require 'mousetrap'
 
 {DenseMap} = require './map.coffee'
 
@@ -151,5 +151,5 @@ keys = {
 }
 for key, dir of keys
   do (key, dir) ->
-    keymaster key, -> sendInput dir
-keymaster '.', -> gameSocket?.send JSON.stringify type: 'input', command: 'pickup'
+    Mousetrap.bind key, -> sendInput dir
+Mousetrap.bind '.', -> gameSocket?.send JSON.stringify type: 'input', command: 'pickup'
