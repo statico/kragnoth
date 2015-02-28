@@ -95,10 +95,10 @@ class Scheduler
       @tick++
       diff = @world.simulate(@tickSpeed, @tick)
       monsters = []
-      for monster in @world.monsters
+      for monster in @world.level.monsters
         monsters.push monster.toViewJSON() if diff.get monster.pos
       items = []
-      for _, item of @world.items
+      for _, item of @world.level.items
         if diff.get item.pos
           items.push item.toViewJSON()
       @send
@@ -120,29 +120,14 @@ class World
   constructor: (playerName) ->
     @_nextGUID = 1
 
-    @level = new Level('level-1')
+    @levels = [new Level(this, 1, 'level-1')]
+    @levelIndex = 0
+    @level = @levels[@levelIndex]
+    @gameOver = false
 
     @player = new Player(playerName)
     @player.pos = @level.pickPositionOfType 8
     @level.actors.set @player.pos, @player
-
-    @monsters = [new Mosquito(), new Slug(), new Slug(), new Slug(), new Slug()]
-    for monster in @monsters
-      monster.id = @getGUID()
-      monster.lastTick = random.integer 10
-      monster.pos = @level.pickRandomSpawnablePosition()
-      @level.actors.set monster.pos, monster
-
-    @items = {}
-    for cls in ['gold', 'weapon']
-      for i in [0..3]
-        item = Item.createFromClass cls
-        item.id = @getGUID()
-        vec2.copy item.pos, @level.pickRandomSpawnablePosition()
-        pile = @level.items.get(item.pos) ? []
-        pile.push item
-        @level.items.set item.pos, pile
-        @items[item.id] = item
 
     @messages = null
 
@@ -151,8 +136,8 @@ class World
 
   kill: (actor) ->
     @level.actors.delete actor.pos
-    index = @monsters.indexOf actor
-    @monsters.splice index, 1 if index != -1
+    index = @level.monsters.indexOf actor
+    @level.monsters.splice index, 1 if index != -1
 
   simulate: (tickSpeed, tick) ->
     @messages = if tick is 1 then ['Welcome to Kragnoth'] else []
@@ -174,7 +159,7 @@ class World
       vec2.max next, next, [0, 0]
       tile = @level.terrain.get next
       neighbor = @level.actors.get next
-      items = @level.items.get next
+      pile = @level.piles.get next
 
       moved = false
       if actor != neighbor
@@ -182,8 +167,8 @@ class World
           if tile in [2, 3, 8, 9] and not neighbor
             moved = true
             vec2.copy actor.pos, next
-          if actor.isPlayer and items?.length
-            @messages.push "There are items here: #{ (i.name for i in items).join ', ' }"
+          if actor.isPlayer and pile?.length
+            @messages.push "There are items here: #{ (i.name for i in pile).join ', ' }"
           if actor.isPlayer and neighbor and command != 'attack-move'
             @messages.push "#{ neighbor.name } is in the way"
         if command in ['attack-move', 'attack']
@@ -218,15 +203,15 @@ class World
           @messages.push "You kill the #{ defender.name }!"
 
     handlePickup = (actor) =>
-      pile = @level.items.get actor.pos
+      pile = @level.piles.get actor.pos
       if pile?.length
-        @level.items.delete actor.pos
+        @level.piles.delete actor.pos
         loop
           item = pile.shift()
           switch item.class
             when 'gold'
               actor.gold += item.value
-              delete @items[item.id]
+              delete @level.items[item.id]
               msg = "#{ item.value } gold"
             when 'weapon'
               actor.items.push item
@@ -241,24 +226,58 @@ class World
         if actor.isPlayer
           @messages.push "There is nothing here to pickup"
 
+    goLevelUp = =>
+      if @level.depth is 1
+        @gameOver = true
+        @levelIndex = -1
+        @level = null
+      else
+        @levelIndex--
+        @level = @levels[@levelIndex]
+        vec2.copy @player.pos, @level.pickPositionOfType 9
+
+    goLevelDown = =>
+      @levelIndex++
+      @level = @levels[@levelIndex]
+      if not @level?
+        depth = @levelIndex + 1
+        @level = new Level(this, depth, "level-#{ depth }")
+        if depth > 2
+          pos = @level.pickPositionOfType 9
+          @level.terrain.set pos, 2
+        @levels[@levelIndex] = @level
+      vec2.copy @player.pos, @level.pickPositionOfType 8
+
     command = @player.simulate()
     switch command?.command
       when 'move', 'attack-move', 'attack'
-        oldPos = vec2.copy [0,0], @player.pos
-        updatePos @player, command.command, command.direction
-        @level.actors.delete oldPos
-        @level.actors.set @player.pos, @player
+        dir = command.direction
+        if dir in ['up', 'down']
+          tile = @level.terrain.get @player.pos
+          console.log 'XXX', dir, tile
+          if dir is 'up' and tile is 8
+            goLevelUp()
+          else if dir is 'down' and tile is 9
+            goLevelDown()
+          else
+            @messages.push "There is no staircase here."
+        else
+          oldPos = vec2.copy [0,0], @player.pos
+          updatePos @player, command.command, command.direction
+          @level.actors.delete oldPos
+          @level.actors.set @player.pos, @player
       when 'pickup'
         handlePickup @player
       when 'choose-item'
-        item = @items[command.id]
+        for i in @player.items
+          item = i if i.id is command.id
         if item?
           if item.class = 'weapon'
             @player.weapon = item
           else
             @messages.push "Can't use #{ item.name } as a weapon"
 
-    for monster in @monsters
+    for monster in @level.monsters
       delta = (tick - monster.lastTick) * tickSpeed
       continue unless delta >= 1000 / monster.speed
       command = monster.simulate()
@@ -292,11 +311,11 @@ class World
     }
 
 class Level
-  constructor: (@name) ->
+  constructor: (@world, @depth, @name) ->
     @width = 40
     @height = 14
     @actors = new SparseMap(@width, @height)
-    @items = new SparseMap(@width, @height)
+    @piles = new SparseMap(@width, @height)
     @terrain = DenseMap.fromJSON
       width: @width
       height: @height
@@ -316,6 +335,24 @@ class Level
         [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0]
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
       ]
+
+    @monsters = [new Mosquito(), new Slug(), new Slug(), new Slug(), new Slug()]
+    for monster in @monsters
+      monster.id = @world.getGUID()
+      monster.lastTick = random.integer 10
+      monster.pos = @pickRandomSpawnablePosition()
+      @actors.set monster.pos, monster
+
+    @items = {}
+    for cls in ['gold', 'weapon']
+      for i in [0..3]
+        item = Item.createFromClass cls
+        item.id = @world.getGUID()
+        vec2.copy item.pos, @pickRandomSpawnablePosition()
+        pile = @piles.get(item.pos) ? []
+        pile.push item
+        @piles.set item.pos, pile
+        @items[item.id] = item
 
   pickPositionOfType: (type) ->
     pos = [0, 0]

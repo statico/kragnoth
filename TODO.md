@@ -2,7 +2,15 @@
 1. multiple levels + staircases
 1. dungeon generation
 1. endgame
-1. wands
+1. multiplayer
+1. room-based FOV
+1. renderer
+1. content
+  - full armor
+  - food
+  - wands
+  - boulders
+  - potions
 
 # architecture
 - server
