@@ -191,6 +191,10 @@ class World
       if moved
         for item in actor.items
           vec2.copy item.pos, actor.pos
+        if tile is 8
+          @messages.push "There is a staircase up here."
+        if tile is 9
+          @messages.push "There is a staircase down here."
       return
 
     solveAttack = (attacker, defender) =>
