@@ -139,6 +139,8 @@ class World
 
     @player = new Player(playerName)
     @player.pos = @level.pickPositionOfType 8
+    console.log @level.terrain.toString()
+    throw new Error("Couldn't find staircase") unless @player.pos
     @level.actors.set @player.pos, @player
 
     @messages = null
@@ -326,29 +328,19 @@ class World
 
 class Level
   constructor: (@world, @depth, @name) ->
-    @width = 40
-    @height = 14
+    @width = 80
+    @height = 24
     @actors = new SparseMap(@width, @height)
     @piles = new SparseMap(@width, @height)
-    @terrain = DenseMap.fromJSON
-      width: @width
-      height: @height
-      map: [
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-        [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0]
-        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,3,3,3,3,3,2,2,2,2,2,2,2,2,1,0,0,0]
-        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,3,3,0,0,0,1,2,2,2,2,2,2,2,2,1,0,0,0]
-        [0,1,2,2,8,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,0,0,0,0,1,2,2,2,2,2,2,2,2,1,0,0,0]
-        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,0,0,0,0,1,1,1,3,1,1,1,1,1,1,0,0,0]
-        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0]
-        [0,1,2,2,2,1,2,2,2,2,1,1,2,2,2,2,2,1,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0]
-        [0,1,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,1,0,0,0,0,0,1,1,1,1,1,1,1,3,1,1,1,1,1,1,0,0,0]
-        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0]
-        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,9,2,2,1,0,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0]
-        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0]
-        [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0]
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-      ]
+
+    @terrain = new DenseMap(@width, @height)
+    map = new ROT.Map.Rogue(@width, @height)
+    map.create (x, y, v) =>
+      @terrain.set [x, y], switch v
+        when 0 then 2
+        when 1 then 0
+    @terrain.set @pickPositionOfType(2), 8
+    @terrain.set @pickPositionOfType(2), 9
 
     @monsters = [new Mosquito(), new Slug(), new Slug(), new Slug(), new Slug()]
     for monster in @monsters
@@ -369,7 +361,12 @@ class Level
         @items[item.id] = item
 
   pickPositionOfType: (type) ->
+    tries = 0
     pos = [0, 0]
+    loop
+      vec2.set pos, random.integer(@width-1), random.integer(@height-1)
+      return pos if @terrain.get(pos) is type
+      break if tries++ > 1000
     for x in [0...@width]
       for y in [0...@height]
         vec2.set pos, x, y
@@ -379,7 +376,7 @@ class Level
   pickRandomSpawnablePosition: ->
     pos = [0, 0]
     loop
-      vec2.set pos, random.integer(@width), random.integer(@height)
+      vec2.set pos, random.integer(@width-1), random.integer(@height-1)
       return pos if @terrain.get(pos) is 2 and not @actors.get(pos)
 
   toJSON: ->

@@ -3,7 +3,7 @@ require 'mousetrap'
 
 {DenseMap} = require './map.coffee'
 
-SIZE = 20
+SIZE = 15
 canvas = document.createElement 'canvas'
 document.body.appendChild canvas
 ctx = canvas.getContext '2d'

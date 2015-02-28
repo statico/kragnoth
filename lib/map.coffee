@@ -47,6 +47,13 @@ class DenseMap extends Map
   delete: (vec) ->
     @map[vec[1]]?[vec[0]] = null
     return
+  toString: ->
+    ret = ''
+    for y in [0...@height]
+      for x in [0...@width]
+        ret += @get [x, y]
+      ret += '\n'
+    return ret
 
 exports.SparseMap = SparseMap
 exports.DenseMap = DenseMap

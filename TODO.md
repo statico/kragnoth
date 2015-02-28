@@ -1,5 +1,4 @@
 # immediate TODO
-1. multiple levels + staircases
 1. dungeon generation
 1. endgame
 1. multiplayer
