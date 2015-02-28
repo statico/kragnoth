@@ -122,7 +122,7 @@ class World
     @level = new Level()
 
     @player = new Player(playerName)
-    @player.pos = @level.pickRandomSpawnablePosition()
+    @player.pos = @level.pickPositionOfType 8
     @level.actors.set @player.pos, @player
 
     @monsters = [new Mosquito(), new Slug(), new Slug(), new Slug(), new Slug()]
@@ -132,21 +132,16 @@ class World
       monster.pos = @level.pickRandomSpawnablePosition()
       @level.actors.set monster.pos, monster
 
-    addItem = (item) =>
-      item.id = @getGUID()
-      vec2.copy item.pos, @level.pickRandomSpawnablePosition()
-      pile = @level.items.get(item.pos) ? []
-      pile.push item
-      @level.items.set item.pos, pile
-      @items[item.id] = item
-
     @items = {}
     for cls in ['gold', 'weapon']
       for i in [0..3]
-        addItem Item.createFromClass cls
-
-    addItem Item.createFromKey 'staircaseUp'
-    addItem Item.createFromKey 'staircaseDown'
+        item = Item.createFromClass cls
+        item.id = @getGUID()
+        vec2.copy item.pos, @level.pickRandomSpawnablePosition()
+        pile = @level.items.get(item.pos) ? []
+        pile.push item
+        @level.items.set item.pos, pile
+        @items[item.id] = item
 
     @messages = null
 
@@ -182,7 +177,7 @@ class World
 
       moved = false
       if command in ['move', 'attack-move']
-        if tile in [2, 3] and not neighbor
+        if tile in [2, 3, 8, 9] and not neighbor
           moved = true
           vec2.copy actor.pos, next
         if actor.isPlayer and items?.length
@@ -273,7 +268,7 @@ class World
 
     # computer what areas the player can see
     diff = new SparseMap(@level.width, @level.height)
-    test = (x, y) => @level.terrain.get([x, y]) in [2, 3]
+    test = (x, y) => @level.terrain.get([x, y]) in [2, 3, 8, 9]
     fov = new ROT.FOV.PreciseShadowcasting(test)
     [x, y] = @player.pos
     temp = [0, 0]
@@ -305,17 +300,25 @@ class Level
         [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0]
         [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,3,3,3,3,3,2,2,2,2,2,2,2,2,1,0,0,0]
         [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,3,3,0,0,0,1,2,2,2,2,2,2,2,2,1,0,0,0]
-        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,0,0,0,0,1,2,2,2,2,2,2,2,2,1,0,0,0]
+        [0,1,2,2,8,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,0,0,0,0,1,2,2,2,2,2,2,2,2,1,0,0,0]
         [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,0,0,0,0,1,1,1,3,1,1,1,1,1,1,0,0,0]
         [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0]
         [0,1,2,2,2,1,2,2,2,2,1,1,2,2,2,2,2,1,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0]
         [0,1,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,1,0,0,0,0,0,1,1,1,1,1,1,1,3,1,1,1,1,1,1,0,0,0]
         [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0]
-        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0]
+        [0,1,2,2,2,2,2,2,2,2,2,2,2,2,9,2,2,1,0,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0]
         [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0]
         [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0]
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
       ]
+
+  pickPositionOfType: (type) ->
+    pos = [0, 0]
+    for x in [0...@width]
+      for y in [0...@height]
+        vec2.set pos, x, y
+        return pos if @terrain.get(pos) is type
+    return null
 
   pickRandomSpawnablePosition: ->
     pos = [0, 0]
@@ -463,9 +466,3 @@ ITEMS =
     class: 'weapon'
     apMin: 1
     apMax: 2
-  staircaseUp:
-    name: 'staircase up'
-    class: 'staircaseUp'
-  staircaseDown:
-    name: 'staircase down'
-    class: 'staircaseDown'

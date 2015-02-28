@@ -102,10 +102,12 @@ cncSocket.onmessage = (event) ->
           for x, obj of row
             ctx.globalAlpha = if obj.tick is tick then 1.0 else 0.4
             style = switch obj.terrain
-              when 0 then '#333'
-              when 1 then '#999'
-              when 2 then '#ccc'
-              when 3 then '#806424'
+              when 0 then '#333' # void
+              when 1 then '#999' # wall
+              when 2 then '#ccc' # floor
+              when 3 then '#806424' # hallway
+              when 8 then 'green' # staircase up
+              when 9 then 'red' # staircase down
             if style
               ctx.fillStyle = style
               ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
@@ -117,8 +119,6 @@ cncSocket.onmessage = (event) ->
           style = switch item.class
             when 'gold' then 'gold'
             when 'weapon' then 'orange'
-            when 'staircaseUp' then 'green'
-            when 'staircaseDown' then 'red'
           ctx.fillStyle = style
           ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
 
@@ -142,6 +142,7 @@ keys = {
   h: 'w', j: 's', k: 'n', l: 'e',
   y: 'nw', u: 'ne', b: 'sw', n: 'se',
   left: 'w', down: 's', up: 'n', right: 'e',
+  '>': 'down', '<': 'up'
 }
 for key, dir of keys
   do (key, dir) ->
