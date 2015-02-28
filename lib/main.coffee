@@ -2,6 +2,7 @@ angular = require 'angular'
 require 'mousetrap'
 
 {DenseMap} = require './map.coffee'
+{TILES} = require './terrain.coffee'
 
 SIZE = 15
 canvas = document.createElement 'canvas'
@@ -116,12 +117,12 @@ cncSocket.onmessage = (event) ->
           for x, obj of row
             ctx.globalAlpha = if obj.tick is tick then 1.0 else 0.6
             style = switch obj.terrain
-              when 0 then '#333' # void
-              when 1 then '#999' # wall
-              when 2 then '#ccc' # floor
-              when 3 then '#806424' # hallway
-              when 8 then 'green' # staircase up
-              when 9 then 'red' # staircase down
+              when TILES.VOID then '#333'
+              when TILES.WALL then '#999'
+              when TILES.FLOOR then '#ccc'
+              when TILES.CORRIDOR then '#806424'
+              when TILES.STAIRCASE_UP then 'green'
+              when TILES.STAIRCASE_DOWN then 'red'
             if style
               ctx.fillStyle = style
               ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE

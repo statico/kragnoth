@@ -8,7 +8,8 @@ random = require 'random-ext'
 websocket = require 'websocket'
 {vec2} = require 'gl-matrix'
 
-{SparseMap, DenseMap} = require './lib/map'
+{SparseMap, DenseMap} = require './lib/map.coffee'
+{TILES} = require './lib/terrain.coffee'
 
 # TODO: Inject
 WEB_PORT = 8080
@@ -138,8 +139,7 @@ class World
     @gameOver = false
 
     @player = new Player(playerName)
-    @player.pos = @level.pickPositionOfType 8
-    console.log @level.terrain.toString()
+    @player.pos = @level.pickPositionOfType TILES.STAIRCASE_UP
     throw new Error("Couldn't find staircase") unless @player.pos
     @level.actors.set @player.pos, @player
 
@@ -178,7 +178,7 @@ class World
       moved = false
       if actor != neighbor
         if command in ['move', 'attack-move']
-          if tile in [2, 3, 8, 9] and not neighbor
+          if tile in [TILES.FLOOR, TILES.CORRIDOR, TILES.STAIRCASE_UP, TILES.STAIRCASE_DOWN] and not neighbor
             moved = true
             vec2.copy actor.pos, next
           if actor.isPlayer and pile?.length
@@ -191,9 +191,9 @@ class World
       if moved
         for item in actor.items
           vec2.copy item.pos, actor.pos
-        if tile is 8
+        if tile is TILES.STAIRCASE_UP
           @messages.push "There is a staircase up here."
-        if tile is 9
+        if tile is TILES.STAIRCASE_DOWN
           @messages.push "There is a staircase down here."
       return
 
@@ -248,7 +248,7 @@ class World
       else
         @levelIndex--
         @level = @levels[@levelIndex]
-        vec2.copy @player.pos, @level.pickPositionOfType 9
+        vec2.copy @player.pos, @level.pickPositionOfType TILES.STAIRCASE_DOWN
 
     goLevelDown = =>
       @levelIndex++
@@ -257,10 +257,10 @@ class World
         depth = @levelIndex + 1
         @level = new Level(this, depth, "level-#{ depth }")
         if depth > 2
-          pos = @level.pickPositionOfType 9
-          @level.terrain.set pos, 2
+          pos = @level.pickPositionOfType TILES.STAIRCASE_DOWN
+          @level.terrain.set pos, TILES.FLOOR
         @levels[@levelIndex] = @level
-      vec2.copy @player.pos, @level.pickPositionOfType 8
+      vec2.copy @player.pos, @level.pickPositionOfType TILES.STAIRCASE_UP
 
     command = @player.simulate()
     switch command?.command
@@ -268,10 +268,9 @@ class World
         dir = command.direction
         if dir in ['up', 'down']
           tile = @level.terrain.get @player.pos
-          console.log 'XXX', dir, tile
-          if dir is 'up' and tile is 8
+          if dir is 'up' and tile is TILES.STAIRCASE_UP
             goLevelUp()
-          else if dir is 'down' and tile is 9
+          else if dir is 'down' and tile is TILES.STAIRCASE_DOWN
             goLevelDown()
           else
             @messages.push "There is no staircase here."
@@ -309,7 +308,7 @@ class World
 
     # computer what areas the player can see
     diff = new SparseMap(@level.width, @level.height)
-    test = (x, y) => @level.terrain.get([x, y]) in [2, 3, 8, 9]
+    test = (x, y) => @level.terrain.get([x, y]) in [TILES.FLOOR, TILES.CORRIDOR, TILES.STAIRCASE_UP, TILES.STAIRCASE_DOWN]
     fov = new ROT.FOV.PreciseShadowcasting(test)
     [x, y] = @player.pos
     temp = [0, 0]
@@ -334,13 +333,15 @@ class Level
     @piles = new SparseMap(@width, @height)
 
     @terrain = new DenseMap(@width, @height)
-    map = new ROT.Map.Rogue(@width, @height)
+    map = new ROT.Map.Digger(@width, @height)
     map.create (x, y, v) =>
       @terrain.set [x, y], switch v
-        when 0 then 2
-        when 1 then 0
-    @terrain.set @pickPositionOfType(2), 8
-    @terrain.set @pickPositionOfType(2), 9
+        when 0 then TILES.FLOOR
+        when 1 then TILES.VOID
+    @terrain.set @pickPositionOfType(TILES.FLOOR), TILES.STAIRCASE_UP
+    @terrain.set @pickPositionOfType(TILES.FLOOR), TILES.STAIRCASE_DOWN
+    console.log 'XXX', @terrain.toString()
+    console.log 'XXX', map.getRooms()
 
     @monsters = [new Mosquito(), new Slug(), new Slug(), new Slug(), new Slug()]
     for monster in @monsters
@@ -377,7 +378,7 @@ class Level
     pos = [0, 0]
     loop
       vec2.set pos, random.integer(@width-1), random.integer(@height-1)
-      return pos if @terrain.get(pos) is 2 and not @actors.get(pos)
+      return pos if @terrain.get(pos) is TILES.FLOOR and not @actors.get(pos)
 
   toJSON: ->
     return {

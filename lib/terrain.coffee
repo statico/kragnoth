@@ -1,0 +1,8 @@
+exports.TILES =
+  VOID: 0
+  FLOOR: 1
+  WALL: 2
+  CORRIDOR: 3
+  DOOR: 4
+  STAIRCASE_UP: 8
+  STAIRCASE_DOWN: 9
