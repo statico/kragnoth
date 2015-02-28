@@ -132,16 +132,21 @@ class World
       monster.pos = @level.pickRandomSpawnablePosition()
       @level.actors.set monster.pos, monster
 
+    addItem = (item) =>
+      item.id = @getGUID()
+      vec2.copy item.pos, @level.pickRandomSpawnablePosition()
+      pile = @level.items.get(item.pos) ? []
+      pile.push item
+      @level.items.set item.pos, pile
+      @items[item.id] = item
+
     @items = {}
     for cls in ['gold', 'weapon']
-      for i in [0..7]
-        item = Item.createFromClass cls
-        item.id = @getGUID()
-        item.pos = @level.pickRandomSpawnablePosition()
-        pile = @level.items.get(item.pos) ? []
-        pile.push item
-        @level.items.set item.pos, pile
-        @items[item.id] = item
+      for i in [0..3]
+        addItem Item.createFromClass cls
+
+    addItem Item.createFromKey 'staircaseUp'
+    addItem Item.createFromKey 'staircaseDown'
 
     @messages = null
 
@@ -313,8 +318,9 @@ class Level
       ]
 
   pickRandomSpawnablePosition: ->
+    pos = [0, 0]
     loop
-      pos = [random.integer(@width), random.integer(@height)]
+      vec2.set pos, random.integer(@width), random.integer(@height)
       return pos if @terrain.get(pos) is 2 and not @actors.get(pos)
 
   toJSON: ->
@@ -399,13 +405,17 @@ class Item
   constructor: ->
     @id = -1
     @pos = [0, 0]
+  @createFromKey: (key) ->
+    return @createFromSpec ITEMS[key]
   @createFromClass: (cls) ->
     spec = random.pick(v for k, v of ITEMS when v.class is cls)
     throw new Error("Unknown item class: #{ cls }") unless spec?
+    return @createFromSpec spec
+  @createFromSpec: (spec) ->
     item = new this()
     item.name = spec.name
-    item.class = cls
-    switch cls
+    item.class = spec.class
+    switch spec.class
       when 'weapon'
         item.ap = random.integer spec.apMax, spec.apMin
       when 'gold'
@@ -453,3 +463,9 @@ ITEMS =
     class: 'weapon'
     apMin: 1
     apMax: 2
+  staircaseUp:
+    name: 'staircase up'
+    class: 'staircaseUp'
+  staircaseDown:
+    name: 'staircase down'
+    class: 'staircaseDown'
