@@ -110,7 +110,7 @@ class Scheduler
       monsters = []
       items = []
       if @world.level?
-        for monster in @world.level.monsters
+        for _, monster of @world.level.monsters
           monsters.push monster.toViewJSON() if diff.get monster.pos
         for _, item of @world.level.items
           if diff.get item.pos
@@ -150,8 +150,7 @@ class World
 
   kill: (actor) ->
     @level.actors.delete actor.pos
-    index = @level.monsters.indexOf actor
-    @level.monsters.splice index, 1 if index != -1
+    delete @level.monsters[actor.id]
 
   simulate: (tickSpeed, tick) ->
     @messages = if tick is 1 then ['Welcome to Kragnoth'] else []
@@ -292,7 +291,7 @@ class World
 
     return if @gameOver
 
-    for monster in @level.monsters
+    for _, monster of @level.monsters
       delta = (tick - monster.lastTick) * tickSpeed
       continue unless delta >= 1000 / monster.speed
       command = monster.simulate()
@@ -343,12 +342,13 @@ class Level
     console.log 'XXX', @terrain.toString()
     console.log 'XXX', map.getRooms()
 
-    @monsters = [new Mosquito(), new Slug(), new Slug(), new Slug(), new Slug()]
-    for monster in @monsters
+    @monsters = {}
+    for monster in [new Mosquito(), new Slug(), new Slug(), new Slug(), new Slug()]
       monster.id = @world.getGUID()
       monster.lastTick = random.integer 10
       monster.pos = @pickRandomSpawnablePosition()
       @actors.set monster.pos, monster
+      @monsters[monster.id] = monster
 
     @items = {}
     for cls in ['gold', 'weapon']
