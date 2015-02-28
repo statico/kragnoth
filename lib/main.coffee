@@ -1,4 +1,4 @@
-angular = require 'angular'
+ngular = require 'angular'
 keymaster = require 'keymaster'
 
 {DenseMap} = require './map.coffee'
@@ -85,7 +85,7 @@ cncSocket.onmessage = (event) ->
 
         for y, row of diff.map
           for x, obj of row
-            state = view.get x, y
+            state = view.get [x, y]
             state.tick = tick
             state.terrain = obj.terrain
 

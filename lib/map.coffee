@@ -1,7 +1,7 @@
 class Map
   constructor: (@width, @height) ->
-  get: (x, y) ->
-    return @map[y]?[x]
+  get: (vec) ->
+    return @map[vec[1]]?[vec[0]]
   toJSON: ->
     return {
       width: @width
@@ -18,14 +18,14 @@ class Map
 class SparseMap extends Map
   constructor: (@width, @height) ->
     @map = {}
-  set: (x, y, value) ->
-    @map[y] ?= {}
-    @map[y][x] = value
+  set: (vec, value) ->
+    @map[vec[1]] ?= {}
+    @map[vec[1]][vec[0]] = value
     return value
-  delete: (x, y) ->
-    if @map[y]?
-      delete @map[y][x]
-      delete @map[y] unless Object.keys(@map[y]).length
+  delete: (vec) ->
+    if @map[vec[1]]?
+      delete @map[vec[1]][vec[0]]
+      delete @map[vec[1]] unless Object.keys(@map[vec[1]]).length
     return
 
 class DenseMap extends Map
@@ -33,16 +33,19 @@ class DenseMap extends Map
     @map = new Array(@height)
     @map[i] = new Array(@width) for i in [0...@height]
   fill: (cb) ->
+    vec = [0, 0]
     for y in [0...@height]
       for x in [0...@width]
-        @set x, y, cb()
+        vec[0] = x
+        vec[1] = y
+        @set vec, cb()
     return
-  set: (x, y, value) ->
-    @map[y] ?= new Array(@width)
-    @map[y][x] = value
+  set: (vec, value) ->
+    @map[vec[1]] ?= new Array(@width)
+    @map[vec[1]][vec[0]] = value
     return value
-  delete: (x, y) ->
-    @map[y]?[x] = null
+  delete: (vec) ->
+    @map[vec[1]]?[vec[0]] = null
     return
 
 exports.SparseMap = SparseMap

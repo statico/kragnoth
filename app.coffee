@@ -96,12 +96,10 @@ class Scheduler
       diff = @world.simulate(@tickSpeed, @tick)
       monsters = []
       for monster in @world.monsters
-        [x, y] = monster.pos
-        monsters.push monster.toViewJSON() if diff.get x, y
+        monsters.push monster.toViewJSON() if diff.get monster.pos
       items = []
       for item in @world.items
-        [x, y] = item.pos
-        if diff.get x, y
+        if diff.get item.pos
           items.push item.toViewJSON()
       @send
         type: 'tick'
@@ -123,29 +121,28 @@ class World
 
     @player = new Player(playerName)
     @player.pos = @level.pickRandomSpawnablePosition()
-    @level.actors.set @player.pos[0], @player.pos[1], @player
+    @level.actors.set @player.pos, @player
 
     @monsters = [new Mosquito(), new Slug(), new Slug(), new Slug(), new Slug()]
     for monster in @monsters
       monster.lastTick = random.integer 10
       monster.pos = @level.pickRandomSpawnablePosition()
-      @level.actors.set monster.pos[0], monster.pos[1], monster
+      @level.actors.set monster.pos, monster
 
     @items = []
     for cls in ['gold', 'weapon']
       for i in [0..7]
         item = Item.createFromClass cls
         @items.push item
-        [x, y] = item.pos = @level.pickRandomSpawnablePosition()
-        pile = @level.items.get(x, y) ? []
+        item.pos = @level.pickRandomSpawnablePosition()
+        pile = @level.items.get(item.pos) ? []
         pile.push item
-        @level.items.set x, y, pile
+        @level.items.set item.pos, pile
 
     @messages = null
 
   kill: (actor) ->
-    [x, y] = actor.pos
-    @level.actors.delete x, y
+    @level.actors.delete actor.pos
     index = @monsters.indexOf actor
     @monsters.splice index, 1 if index != -1
 
@@ -167,9 +164,9 @@ class World
       vec2.add next, actor.pos, delta
       vec2.min next, next, [@level.width - 1, @level.height - 1]
       vec2.max next, next, [0, 0]
-      tile = @level.terrain.get next[0], next[1]
-      neighbor = @level.actors.get next[0], next[1]
-      items = @level.items.get next[0], next[1]
+      tile = @level.terrain.get next
+      neighbor = @level.actors.get next
+      items = @level.items.get next
 
       moved = false
       if command in ['move', 'attack-move']
@@ -196,10 +193,9 @@ class World
           @messages.push "You kill the #{ defender.name }!"
 
     handlePickup = (actor) =>
-      [x, y] = actor.pos
-      pile = @level.items.get x, y
+      pile = @level.items.get actor.pos
       if pile?.length
-        @level.items.delete x, y
+        @level.items.delete actor.pos
         loop
           item = pile.shift()
           index = @items.indexOf item
@@ -225,8 +221,8 @@ class World
     if command?.command in ['move', 'attack-move', 'attack']
       oldPos = vec2.copy [0,0], @player.pos
       updatePos @player, command.command, command.direction
-      @level.actors.delete oldPos[0], oldPos[1]
-      @level.actors.set @player.pos[0], @player.pos[1], @player
+      @level.actors.delete oldPos
+      @level.actors.set @player.pos, @player
     if command?.command is 'pickup'
       handlePickup @player
 
@@ -237,20 +233,20 @@ class World
       if command?.command in ['move', 'attack-move', 'attack']
         oldPos = vec2.copy [0,0], monster.pos
         updatePos monster, command.command, command.direction
-        @level.actors.delete oldPos[0], oldPos[1]
-        @level.actors.set monster.pos[0], monster.pos[1], monster
+        @level.actors.delete oldPos
+        @level.actors.set monster.pos, monster
       if command?.command is 'pickup'
         handlePickup monster
       monster.lastTick = tick
 
     # computer what areas the player can see
     diff = new SparseMap(@level.width, @level.height)
-    test = (x, y) => @level.terrain.get(x, y) in [2, 3]
+    test = (x, y) => @level.terrain.get([x, y]) in [2, 3]
     fov = new ROT.FOV.PreciseShadowcasting(test)
     [x, y] = @player.pos
     fov.compute x, y, 10, (x, y, _, visible) =>
       # for now, just send terrain data
-      diff.set x, y, terrain: @level.terrain.get x, y
+      diff.set [x, y], terrain: @level.terrain.get [x, y]
 
     return diff
 
@@ -289,9 +285,8 @@ class Level
 
   pickRandomSpawnablePosition: ->
     loop
-      x = random.integer @width
-      y = random.integer @height
-      return [x, y] if @terrain.get(x, y) is 2 and not @actors.get(x, y)
+      pos = [random.integer(@width), random.integer(@height)]
+      return pos if @terrain.get(pos) is 2 and not @actors.get(pos)
 
   toJSON: ->
     return {
