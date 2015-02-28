@@ -169,12 +169,15 @@ class World
       vec2.max next, next, [0, 0]
       tile = @level.terrain.get next[0], next[1]
       neighbor = @level.actors.get next[0], next[1]
+      items = @level.items.get next[0], next[1]
 
       moved = false
       if command in ['move', 'attack-move']
         if tile in [2, 3] and not neighbor
           moved = true
           vec2.copy actor.pos, next
+        if actor.isPlayer and items?.length
+          @messages.push "There are items here: #{ (i.name for i in items).join ', ' }"
         if actor.isPlayer and neighbor and command != 'attack-move'
           @messages.push "#{ neighbor.name } is in the way"
       if command in ['attack-move', 'attack']
