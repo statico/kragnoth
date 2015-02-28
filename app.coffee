@@ -150,7 +150,7 @@ class World
     @monsters.splice index, 1 if index != -1
 
   simulate: (tickSpeed, tick) ->
-    @messages = []
+    @messages = if tick is 1 then ['Welcome to Kragnoth'] else []
 
     updatePos = (actor, command, dir) =>
       delta = switch dir
@@ -206,7 +206,7 @@ class World
               actor.gold += item.value
               msg = "#{ item.value } gold"
             when 'weapon'
-              actor.inventory.push item
+              actor.items.push item
               article = if /aeiouy/.test(item.name) then 'an' else 'a'
               msg = "#{ article } #{ item.name }"
           if actor.isPlayer
@@ -306,7 +306,7 @@ class Player
     @ap = 5
     @hp = 50
     @gold = 0
-    @inventory = []
+    @items = []
   simulate: ->
     if @lastInput
       command = { command: @lastInput.command, direction: @lastInput.direction }
@@ -316,12 +316,16 @@ class Player
     return {
       name: @name
       pos: @pos
-      inventory: (i.toViewJSON() for i in @inventory)
+      items: (i.toViewJSON() for i in @items)
+      gold: @gold
+      ap: @ap
+      hp: @hp
     }
 
 class Monster
   constructor: ->
     @isPlayer = false
+    @items = []
     @gold = 0
   simulate: ->
     dir = random.pick 'n w s e nw sw se ne'.split ' '

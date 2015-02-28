@@ -1,3 +1,4 @@
+angular = require 'angular'
 keymaster = require 'keymaster'
 
 {DenseMap} = require './map.coffee'
@@ -9,12 +10,53 @@ ctx = canvas.getContext '2d'
 ctx.imageSmoothingEnabled = false
 ctx.webkitImageSmoothingEnabled = false
 
-info = document.createElement 'div'
-document.body.appendChild info
-log = document.createElement 'div'
-log.style.color = 'yellow'
-log.style.height = '5em'
-document.body.appendChild log
+angular.module('kragnoth', [])
+  .service('UIService', ($rootScope) ->
+    return new class UIService
+      constructor: ->
+        @messages = []
+        @tick = -1
+        @player = null
+      addMessages: (messages) ->
+        @messages.unshift messages
+        @messages.splice 5
+        $rootScope.$broadcast 'update'
+      updateTick: (@tick) ->
+        $rootScope.$broadcast 'update'
+      updatePlayer: (@player) ->
+        $rootScope.$broadcast 'update'
+  )
+  .controller('UIController', ($rootScope, $scope, UIService) ->
+    $rootScope.$on 'update', ->
+      $scope.messages = UIService.messages
+      $scope.tick = UIService.tick
+      $scope.player = UIService.player
+      $scope.$apply()
+  )
+
+el = document.createElement 'div'
+el.innerHTML = '''
+<div ng-controller='UIController' style="display: flex">
+  <div style="flex:1">
+    <div ng-repeat="set in messages"
+        ng-style="{'color': 'yellow', 'opacity': $first && 1.0 || 0.5 }">
+      <div ng-repeat="m in set">{{ m }}</div>
+    </div>
+  </div>
+  <div style="flex:1">
+    <strong>{{ player.name }}</strong><br/>
+    Gold: {{ player.gold }}<br/>
+    HP: {{ player.hp }}<br/>
+    <hr/>
+    {{ player.items.length }} items
+    <div ng-repeat="item in player.items">· {{ item.name }}</div>
+  </div>
+  <div style="flex:1">Tick: {{ tick }}</div>
+</div>
+'''
+document.body.appendChild el
+angular.bootstrap el, ['kragnoth']
+uiService = angular.element(el).injector().get 'UIService'
 
 gameSocket = view = null
 
@@ -36,10 +78,10 @@ cncSocket.onmessage = (event) ->
         canvas.height = height * SIZE
 
       if msg.type is 'tick'
-        {tick, diff, messages} = msg
-        info.innerText = "Tick: #{ tick }"
-        if messages?.length
-          log.innerText = messages.reverse().join('\n') + '\n' + log.innerText
+        {tick, diff, player, messages} = msg
+        uiService.updateTick tick
+        uiService.updatePlayer player
+        uiService.addMessages(messages) if messages.length
 
         for y, row of diff.map
           for x, obj of row
