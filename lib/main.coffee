@@ -70,6 +70,7 @@ angular.bootstrap el, ['kragnoth']
 uiService = angular.element(el).injector().get 'UIService'
 
 gameSocket = view = null
+views = {}
 
 cncSocket = new WebSocket('ws://127.0.0.1:8081', ['cnc'])
 cncSocket.onopen = ->
@@ -82,18 +83,22 @@ cncSocket.onmessage = (event) ->
     gameSocket.onmessage = (event) ->
       msg = JSON.parse event.data
 
-      if msg.type is 'init'
-        {width, height} = msg
-        view = new DenseMap(width, height)
-        view.fill -> {}
+      if msg.type is 'level-init'
+        {width, height, name, index} = msg
+        if index of views
+          view = views[index]
+        else
+          view = new DenseMap(width, height)
+          view.fill -> {}
+          views[index] = view
         canvas.width = width * SIZE
         canvas.height = height * SIZE
+        uiService.updateLevelName name
 
       if msg.type is 'tick'
         {tick, diff, player, messages, levelName} = msg
         uiService.updateTick tick
         uiService.updatePlayer player
-        uiService.updateLevelName levelName
         uiService.addMessages(messages) if messages.length
 
         for y, row of diff.map
@@ -105,7 +110,7 @@ cncSocket.onmessage = (event) ->
         ctx.clearRect 0, 0, canvas.width, canvas.height
         for y, row of view.map
           for x, obj of row
-            ctx.globalAlpha = if obj.tick is tick then 1.0 else 0.4
+            ctx.globalAlpha = if obj.tick is tick then 1.0 else 0.6
             style = switch obj.terrain
               when 0 then '#333' # void
               when 1 then '#999' # wall

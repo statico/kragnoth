@@ -87,24 +87,36 @@ class Scheduler
       msg = JSON.parse if event.type is 'utf8' then event.utf8Data else event.binaryData
       if msg.type is 'input'
         @world.player.lastInput = msg
-    @send type: 'init', width: @world.level.width, height: @world.level.height
   send: (obj) -> @playerConn.sendUTF JSON.stringify obj
   start: ->
+    oldLevelIndex = null
     doTick = =>
       start = Date.now()
       @tick++
+      if oldLevelIndex != @world.levelIndex
+        @send
+          type: 'level-init'
+          index: @world.levelIndex
+          name: @world.level.name
+          width: @world.level.width
+          height: @world.level.height
+        oldLevelIndex = @world.levelIndex
       diff = @world.simulate(@tickSpeed, @tick)
+      if @world.gameOver
+        console.log "Game over"
+        @send type: 'gameover'
+        return
       monsters = []
-      for monster in @world.level.monsters
-        monsters.push monster.toViewJSON() if diff.get monster.pos
       items = []
-      for _, item of @world.level.items
-        if diff.get item.pos
-          items.push item.toViewJSON()
+      if @world.level?
+        for monster in @world.level.monsters
+          monsters.push monster.toViewJSON() if diff.get monster.pos
+        for _, item of @world.level.items
+          if diff.get item.pos
+            items.push item.toViewJSON()
       @send
         type: 'tick'
         tick: @tick
-        levelName: @world.level.name
         player: @world.player.toViewJSON()
         monsters: monsters
         items: items
@@ -276,6 +288,8 @@ class World
             @player.weapon = item
           else
             @messages.push "Can't use #{ item.name } as a weapon"
+
+    return if @gameOver
 
     for monster in @level.monsters
       delta = (tick - monster.lastTick) * tickSpeed
