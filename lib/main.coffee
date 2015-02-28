@@ -83,6 +83,10 @@ cncSocket.onmessage = (event) ->
     gameSocket.onmessage = (event) ->
       msg = JSON.parse event.data
 
+      if msg.type is 'gameover'
+        canvas.style.display = 'none'
+        uiService.addMessages(['Game over'])
+
       if msg.type is 'level-init'
         {width, height, name, index} = msg
         if index of views
