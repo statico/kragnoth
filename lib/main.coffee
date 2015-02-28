@@ -18,6 +18,7 @@ angular.module('kragnoth', [])
         @messages = []
         @tick = -1
         @player = null
+        @levelName = null
       addMessages: (messages) ->
         @messages.unshift messages
         @messages.splice 5
@@ -25,6 +26,8 @@ angular.module('kragnoth', [])
       updateTick: (@tick) ->
         $rootScope.$broadcast 'update'
       updatePlayer: (@player) ->
+        $rootScope.$broadcast 'update'
+      updateLevelName: (@levelName) ->
         $rootScope.$broadcast 'update'
       chooseItem: (item) ->
         @socket.send JSON.stringify type: 'input', command: 'choose-item', id: item?.id
@@ -34,6 +37,7 @@ angular.module('kragnoth', [])
       $scope.messages = UIService.messages
       $scope.tick = UIService.tick
       $scope.player = UIService.player
+      $scope.levelName = UIService.levelName
       $scope.choose = (item) -> UIService.chooseItem(item)
       $scope.$apply()
   )
@@ -48,7 +52,7 @@ el.innerHTML = '''
     </div>
   </div>
   <div style="flex:1">
-    <strong>{{ player.name }}</strong><br/>
+    <strong>{{ player.name }} - {{ levelName }}</strong><br/>
     Gold: {{ player.gold }}<br/>
     HP: {{ player.hp }}<br/>
     Weapon: {{ player.weapon.name || 'empty-handed' }}<br/>
@@ -86,9 +90,10 @@ cncSocket.onmessage = (event) ->
         canvas.height = height * SIZE
 
       if msg.type is 'tick'
-        {tick, diff, player, messages} = msg
+        {tick, diff, player, messages, levelName} = msg
         uiService.updateTick tick
         uiService.updatePlayer player
+        uiService.updateLevelName levelName
         uiService.addMessages(messages) if messages.length
 
         for y, row of diff.map

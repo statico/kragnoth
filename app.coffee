@@ -104,6 +104,7 @@ class Scheduler
       @send
         type: 'tick'
         tick: @tick
+        levelName: @world.level.name
         player: @world.player.toViewJSON()
         monsters: monsters
         items: items
@@ -119,7 +120,7 @@ class World
   constructor: (playerName) ->
     @_nextGUID = 1
 
-    @level = new Level()
+    @level = new Level('level-1')
 
     @player = new Player(playerName)
     @player.pos = @level.pickPositionOfType 8
@@ -286,8 +287,7 @@ class World
     }
 
 class Level
-  constructor: ->
-    @name = null
+  constructor: (@name) ->
     @width = 40
     @height = 14
     @actors = new SparseMap(@width, @height)
