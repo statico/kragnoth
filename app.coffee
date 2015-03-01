@@ -29,13 +29,6 @@ app.get '/', (req, res) ->
       <head>
         <meta charset="utf-8"/>
         <title>Kragnoth</title>
-        <style>
-        body {
-          background: black;
-          color: white;
-          font-family: sans-serif;
-        }
-        </style>
       </head>
       <body>
         <script src="/main.js"></script>

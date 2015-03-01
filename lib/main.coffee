@@ -5,6 +5,13 @@ require 'mousetrap'
 {TILES} = require './terrain.coffee'
 
 SIZE = 15
+
+document.body.style.cssText = '''
+  background: black;
+  color: white;
+  font-family: sans-serif;
+'''
+
 canvas = document.createElement 'canvas'
 document.body.appendChild canvas
 ctx = canvas.getContext '2d'
