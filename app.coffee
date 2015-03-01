@@ -350,6 +350,21 @@ class Level
           vec2.set pos, x, y
           @terrain.set pos, TILES.CORRIDOR if @terrain.get(pos) is TILES.FLOOR
 
+    maybeDoor = (x, y) =>
+      vec2.set pos, x, y
+      @terrain.set pos, TILES.DOOR if @terrain.get(pos) is TILES.FLOOR
+    for room in map.getRooms()
+      x1 = room._x1 - 1
+      x2 = room._x2 + 1
+      y1 = room._y1 - 1
+      y2 = room._y2 + 1
+      for x in [x1..x2]
+        maybeDoor x, y1
+        maybeDoor x, y2
+      for y in [y1+1..y2-1]
+        maybeDoor x1, y
+        maybeDoor x2, y
+
     pos = @pickPositionOfType(TILES.FLOOR)
     @terrain.set pos, TILES.STAIRCASE_UP
     pos = @pickPositionOfType(TILES.FLOOR)
