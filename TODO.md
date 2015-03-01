@@ -48,3 +48,8 @@
 
 # client-side
 - reconnecting websockets
+
+# ideas
+- use Int8Array for DenseMap in places
+- optimize diffing
+- optimize vector garbage

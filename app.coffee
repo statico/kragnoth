@@ -55,11 +55,11 @@ cncWSServer.on 'request', (req) ->
   console.log 'Accepted CNC connection'
   conn.on 'message', (event) ->
     msg = JSON.parse if event.type is 'utf8' then event.utf8Data else event.binaryData
-    console.log 'XXX', 'CNC message', msg
+    console.log 'CNC message', msg
   conn.on 'close', ->
-    console.log 'XXX', 'CNC closed'
+    console.log 'CNC closed'
   conn.on 'error', (err) ->
-    console.log 'XXX', 'CNC error', err
+    console.log 'CNC error', err
   conn.sendUTF JSON.stringify type: 'hello'
   conn.sendUTF JSON.stringify type: 'connect', url: "ws://127.0.0.1:#{ GAME_PORT }/"
 
@@ -72,9 +72,9 @@ gameWSServer.on 'request', (req) ->
   console.log 'Accepted Game connection'
   conn.on 'message', (event) ->
     msg = JSON.parse if event.type is 'utf8' then event.utf8Data else event.binaryData
-    console.log 'XXX', 'Game message', msg
+    console.log 'Game message', msg
   conn.on 'error', (err) ->
-    console.log 'XXX', 'Game error', err
+    console.log 'Game error', err
 
   world = new World('player1')
   scheduler = new Scheduler(world, conn)
