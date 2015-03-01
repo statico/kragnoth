@@ -20,6 +20,7 @@ angular.module('kragnoth', [])
         @tick = -1
         @player = null
         @levelName = null
+        @isGameOver = false
       addMessages: (messages) ->
         @messages.unshift messages
         @messages.splice 5
@@ -30,6 +31,9 @@ angular.module('kragnoth', [])
         $rootScope.$broadcast 'update'
       updateLevelName: (@levelName) ->
         $rootScope.$broadcast 'update'
+      gameIsOver: ->
+        @isGameOver = true
+        $rootScope.$broadcast 'update'
       chooseItem: (item) ->
         @socket.send JSON.stringify type: 'input', command: 'choose-item', id: item?.id
   )
@@ -39,6 +43,7 @@ angular.module('kragnoth', [])
       $scope.tick = UIService.tick
       $scope.player = UIService.player
       $scope.levelName = UIService.levelName
+      $scope.isGameOver = UIService.isGameOver
       $scope.choose = (item) -> UIService.chooseItem(item)
       $scope.$apply()
   )
@@ -47,6 +52,9 @@ el = document.createElement 'div'
 el.innerHTML = '''
 <div ng-controller='UIController' style="display: flex">
   <div style="flex:1">
+    <h1 ng-show="isGameOver" style="color: pink">
+      Game Over
+    </h1>
     <div ng-repeat="set in messages"
         ng-style="{'color': 'yellow', 'opacity': $first && 1.0 || 0.5 }">
       <div ng-repeat="m in set">{{ m }}</div>
@@ -76,6 +84,9 @@ views = {}
 cncSocket = new WebSocket('ws://127.0.0.1:9001', ['cnc'])
 cncSocket.onopen = ->
   cncSocket.send JSON.stringify type: 'hello'
+cncSocket.onclose = ->
+  uiService.addMessages ['ERROR: Connection closed']
+  uiService.gameIsOver()
 cncSocket.onmessage = (event) ->
   msg = JSON.parse event.data
   if msg.type is 'connect'
@@ -85,8 +96,8 @@ cncSocket.onmessage = (event) ->
       msg = JSON.parse event.data
 
       if msg.type is 'gameover'
-        canvas.style.display = 'none'
-        uiService.addMessages(['Game over'])
+        uiService.addMessages [msg.reason]
+        uiService.gameIsOver()
 
       if msg.type is 'level-init'
         {width, height, name, index} = msg

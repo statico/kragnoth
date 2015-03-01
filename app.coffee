@@ -107,7 +107,7 @@ class Scheduler
       diff = @world.simulate(@tickSpeed, @tick)
       if @world.gameOver
         console.log "Game over"
-        @send type: 'gameover'
+        @send type: 'gameover', reason: "You have exited the dungeon. Goodbye!"
         return
       monsters = []
       items = []

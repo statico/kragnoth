@@ -1,6 +1,4 @@
 # immediate TODO
-1. dungeon generation
-1. endgame
 1. multiplayer
 1. room-based FOV
 1. renderer
