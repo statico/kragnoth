@@ -14,6 +14,12 @@ document.body.style.cssText = '''
   font-family: sans-serif;
 '''
 
+document.body.innerHTML += '''
+<div style="color: grey">
+  <strong>Keys:</strong> HJKL / YUBN / arrows to move/attack, comma to pickup.
+</div>
+'''
+
 canvas = document.createElement 'canvas'
 canvas.height = 0
 document.body.appendChild canvas
