@@ -330,7 +330,7 @@ class World
 
 class Level
   constructor: (@world, @depth, @name) ->
-    @width = 80
+    @width = 60
     @height = 24
     @actors = new SparseMap(@width, @height)
     @piles = new SparseMap(@width, @height)
