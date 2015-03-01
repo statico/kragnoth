@@ -1,5 +1,8 @@
 # immediate TODO
 1. multiplayer
+  - implementation
+  - try simulate-on-move
+1. combine monsters and items in diff (client only sees "things" at positions)
 1. room-based FOV
 1. renderer
 1. content

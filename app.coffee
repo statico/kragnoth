@@ -17,6 +17,7 @@ websocket = require 'websocket'
 WEB_PORT = 9000
 CNC_PORT = 9001
 GAME_PORT = 9002
+MIN_PLAYERS = 2
 
 app = express()
 
@@ -42,48 +43,78 @@ app.listen WEB_PORT, '0.0.0.0', ->
 cncServer = http.createServer()
 cncServer.listen CNC_PORT, '0.0.0.0', -> console.log "CNC server on #{ CNC_PORT }"
 
+cncLobby = {}
 cncWSServer = new websocket.server(httpServer: cncServer)
 cncWSServer.on 'request', (req) ->
   conn = req.accept 'cnc', req.origin
+  send = (obj) -> conn.sendUTF JSON.stringify obj
   console.log 'Accepted CNC connection'
   conn.on 'message', (event) ->
     msg = JSON.parse if event.type is 'utf8' then event.utf8Data else event.binaryData
     console.log 'CNC message', msg
+    if msg.type is 'hello'
+      {playerId} = msg
+      if playerId of cncLobby
+        console.error "Error: #{ playerId } already in lobby"
+        return
+      cncLobby[playerId] = conn
+      if Object.keys(cncLobby).length >= MIN_PLAYERS
+        gameId = "game-#{ random.restrictedString [random.CHAR_TYPE.LOWERCASE], 4, 4 }"
+        for playerId, playerConn of cncLobby
+          console.log "Telling player #{ playerId } to start game #{ gameId }"
+          playerConn.sendUTF JSON.stringify
+            type: 'connect', url: "ws://127.0.0.1:#{ GAME_PORT }/", gameId: gameId
+          delete cncLobby[playerId]
+      else
+        cncLobby[playerId] = conn
+        console.log "Player #{ playerId } is waiting for a game"
+
   conn.on 'close', ->
     console.log 'CNC closed'
   conn.on 'error', (err) ->
     console.log 'CNC error', err
-  conn.sendUTF JSON.stringify type: 'hello'
-  conn.sendUTF JSON.stringify type: 'connect', url: "ws://127.0.0.1:#{ GAME_PORT }/"
+  send type: 'hello'
 
 gameServer = http.createServer()
 gameServer.listen GAME_PORT, '0.0.0.0', -> console.log "Game server on #{ GAME_PORT }"
 
+gameSchedulers = {}
 gameWSServer = new websocket.server(httpServer: gameServer)
 gameWSServer.on 'request', (req) ->
   conn = req.accept 'game', req.origin
   console.log 'Accepted Game connection'
+  conn.on 'error', (err) ->
+    console.log 'Game error', err
   conn.on 'message', (event) ->
     msg = JSON.parse if event.type is 'utf8' then event.utf8Data else event.binaryData
     console.log 'Game message', msg
-  conn.on 'error', (err) ->
-    console.log 'Game error', err
-
-  world = new World('player1')
-  scheduler = new Scheduler(world, conn)
-  scheduler.start()
-  conn.on 'close', ->
-    scheduler.end()
+    if msg.type is 'hello'
+      {playerId, gameId} = msg
+      scheduler = gameSchedulers[gameId]
+      if not scheduler
+        scheduler = new Scheduler(new World())
+        gameSchedulers[gameId] = scheduler
+      scheduler.addPlayer playerId, conn
+      if Object.keys(scheduler.players).length >= MIN_PLAYERS
+        scheduler.start()
+        conn.on 'close', ->
+          scheduler.world.gameOver = true
 
 class Scheduler
-  constructor: (@world, @playerConn) ->
+  constructor: (@world) ->
     @tickSpeed = 100
     @tick = 0
-    @playerConn.on 'message', (event) =>
+    @players = {}
+  addPlayer: (playerId, conn) ->
+    @players[playerId] = conn
+    @world.addPlayer playerId, conn
+    conn.on 'message', (event) =>
       msg = JSON.parse if event.type is 'utf8' then event.utf8Data else event.binaryData
       if msg.type is 'input'
-        @world.player.lastInput = msg
-  send: (obj) -> @playerConn.sendUTF JSON.stringify obj
+        @world.handlePlayerInput playerId, msg
+  send: (obj) ->
+    for playerId, conn of @players
+      conn.sendUTF JSON.stringify obj
   start: ->
     oldLevelIndex = null
     doTick = =>
@@ -100,7 +131,7 @@ class Scheduler
       diff = @world.simulate(@tickSpeed, @tick)
       if @world.gameOver
         console.log "Game over"
-        @send type: 'gameover', reason: "You have exited the dungeon. Goodbye!"
+        @send type: 'gameover', reason: "Your party has exited the dungeon. Goodbye!"
         return
       monsters = []
       items = []
@@ -110,10 +141,13 @@ class Scheduler
         for _, item of @world.level.items
           if diff.get item.pos
             items.push item.toViewJSON()
+      players = {}
+      for playerId, actor of @world.playerActors
+        players[playerId] = actor.toViewJSON()
       @send
         type: 'tick'
         tick: @tick
-        player: @world.player.toViewJSON()
+        players: players
         monsters: monsters
         items: items
         diff: diff.toJSON()
@@ -125,22 +159,28 @@ class Scheduler
     clearTimeout @timer
 
 class World
-  constructor: (playerName) ->
+  constructor: ->
     @_nextGUID = 1
 
     @levels = [new Level(this, 1, 'level-1')]
     @levelIndex = 0
     @level = @levels[@levelIndex]
     @gameOver = false
-
-    @player = new Player(playerName)
-    @player.pos = @level.pickPositionOfType TILES.STAIRCASE_UP
-    if not @player.pos
-      console.log @level.terrain.toString()
-      throw new Error("Couldn't find staircase up") unless @player.pos
-    @level.actors.set @player.pos, @player
-
     @messages = null
+
+    @playerConns = {}
+    @playerActors = {}
+
+  addPlayer: (id, conn) ->
+    actor = new Player(id)
+    @playerConns[id] = conn
+    @playerActors[id] = actor
+    actor.pos = @level.pickPositionOfType TILES.STAIRCASE_UP
+    throw new Error("Couldn't find staircase up") unless actor.pos
+    @level.actors.set actor.pos, actor
+
+  handlePlayerInput: (id, msg) ->
+    @playerActors[id].lastInput = msg
 
   getGUID: ->
     return @_nextGUID++
@@ -198,19 +238,19 @@ class World
       ap += attacker.weapon.ap if attacker.weapon?
       defender.hp -= ap
       if attacker.isPlayer
-        @messages.push "You hit the #{ defender.name }"
+        @messages.push "Player #{ attacker.name } hit the #{ defender.name }"
         if attacker.ap is 0
           msg += " It seems unaffected."
         @messages.push msg
       if defender.isPlayer
-        msg = "The #{ attacker.name } hits!"
+        msg = "The #{ attacker.name } hits #{ defender.name }!"
         if attacker.ap is 0
-          msg += " You seem unaffected."
+          msg += " They seem unaffected."
         @messages.push msg
       if defender.hp <= 0
         @kill defender
         if attacker.isPlayer
-          @messages.push "You kill the #{ defender.name }!"
+          @messages.push "#{ attacker.name } kills the #{ defender.name }!"
 
     handlePickup = (actor) =>
       pile = @level.piles.get actor.pos
@@ -228,14 +268,15 @@ class World
               article = if /aeiouy/.test(item.name) then 'an' else 'a'
               msg = "#{ article } #{ item.name }"
           if actor.isPlayer
-            @messages.push "You pick up #{ msg }"
+            @messages.push "#{ actor.name } picks up #{ msg }"
           else
             @messages.push "The #{ actor.name } picks up #{ msg }"
           break unless pile.length
       else
         if actor.isPlayer
-          @messages.push "There is nothing here to pickup"
+          @messages.push "There nothing for #{ actor.name } to pickup"
 
+    # TODO - keep searching for 'player'
     goLevelUp = =>
       if @level.depth is 1
         @gameOver = true
@@ -244,7 +285,9 @@ class World
       else
         @levelIndex--
         @level = @levels[@levelIndex]
-        vec2.copy @player.pos, @level.pickPositionOfType TILES.STAIRCASE_DOWN
+        pos = @level.pickPositionOfType TILES.STAIRCASE_DOWN
+        for _, player of @playerActors
+          vec2.copy player.pos, pos
 
     goLevelDown = =>
       @levelIndex++
@@ -256,35 +299,39 @@ class World
           pos = @level.pickPositionOfType TILES.STAIRCASE_DOWN
           @level.terrain.set pos, TILES.FLOOR
         @levels[@levelIndex] = @level
-      vec2.copy @player.pos, @level.pickPositionOfType TILES.STAIRCASE_UP
+      pos = @level.pickPositionOfType TILES.STAIRCASE_UP
+      for _, player of @playerActors
+        vec2.copy player.pos, pos
 
-    command = @player.simulate()
-    switch command?.command
-      when 'move', 'attack-move', 'attack'
-        dir = command.direction
-        if dir in ['up', 'down']
-          tile = @level.terrain.get @player.pos
-          if dir is 'up' and tile is TILES.STAIRCASE_UP
-            goLevelUp()
-          else if dir is 'down' and tile is TILES.STAIRCASE_DOWN
-            goLevelDown()
+    for _, player of @playerActors
+      command = player.simulate()
+      switch command?.command
+        when 'move', 'attack-move', 'attack'
+          dir = command.direction
+          if dir in ['up', 'down']
+            # TODO: make sure both players are on the square
+            tile = @level.terrain.get player.pos
+            if dir is 'up' and tile is TILES.STAIRCASE_UP
+              goLevelUp()
+            else if dir is 'down' and tile is TILES.STAIRCASE_DOWN
+              goLevelDown()
+            else
+              @messages.push "There is no staircase here."
           else
-            @messages.push "There is no staircase here."
-        else
-          oldPos = vec2.copy [0,0], @player.pos
-          updatePos @player, command.command, command.direction
-          @level.actors.delete oldPos
-          @level.actors.set @player.pos, @player
-      when 'pickup'
-        handlePickup @player
-      when 'choose-item'
-        for i in @player.items
-          item = i if i.id is command.id
-        if item?
-          if item.class = 'weapon'
-            @player.weapon = item
-          else
-            @messages.push "Can't use #{ item.name } as a weapon"
+            oldPos = vec2.copy [0,0], player.pos
+            updatePos player, command.command, command.direction
+            @level.actors.delete oldPos
+            @level.actors.set player.pos, player
+        when 'pickup'
+          handlePickup player
+        when 'choose-item'
+          for i in player.items
+            item = i if i.id is command.id
+          if item?
+            if item.class = 'weapon'
+              player.weapon = item
+            else
+              @messages.push "Can't use #{ item.name } as a weapon"
 
     return if @gameOver
 
@@ -306,18 +353,19 @@ class World
     diff = new SparseMap(@level.width, @level.height)
     test = (x, y) => @level.terrain.get([x, y]) in [TILES.FLOOR, TILES.CORRIDOR, TILES.DOOR, TILES.STAIRCASE_UP, TILES.STAIRCASE_DOWN]
     fov = new ROT.FOV.PreciseShadowcasting(test)
-    [x, y] = @player.pos
-    temp = [0, 0]
-    fov.compute x, y, 10, (x, y, _, visible) =>
-      # for now, just send terrain data
-      vec2.set temp, x, y
-      diff.set temp, terrain: @level.terrain.get temp
+    pos = [0, 0]
+    for _, player of @playerActors
+      [x, y] = player.pos
+      fov.compute x, y, 10, (x, y, _, visible) =>
+        # for now, just send terrain data
+        vec2.set pos, x, y
+        diff.set pos, terrain: @level.terrain.get pos
 
     return diff
 
   toJSON: ->
     return {
-      player: @player.toJSON()
+      players: (p.toJSON() for _, p of @playerActors)
       level: @level.toJSON()
     }
 
