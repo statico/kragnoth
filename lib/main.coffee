@@ -162,4 +162,4 @@ keys = {
 for key, dir of keys
   do (key, dir) ->
     Mousetrap.bind key, -> sendInput dir
-Mousetrap.bind '.', -> gameSocket?.send JSON.stringify type: 'input', command: 'pickup'
+Mousetrap.bind ',', -> gameSocket?.send JSON.stringify type: 'input', command: 'pickup'
