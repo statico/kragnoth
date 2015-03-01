@@ -73,7 +73,7 @@ uiService = angular.element(el).injector().get 'UIService'
 gameSocket = view = null
 views = {}
 
-cncSocket = new WebSocket('ws://127.0.0.1:8081', ['cnc'])
+cncSocket = new WebSocket('ws://127.0.0.1:9001', ['cnc'])
 cncSocket.onopen = ->
   cncSocket.send JSON.stringify type: 'hello'
 cncSocket.onmessage = (event) ->

@@ -1,5 +1,7 @@
 #!./node_modules/.bin/coffee
 
+require 'coffee-script/register' # for node-inspector
+
 ROT = require 'rot.js'
 browserify = require 'browserify-middleware'
 express = require 'express'
@@ -12,9 +14,9 @@ websocket = require 'websocket'
 {TILES} = require './lib/terrain.coffee'
 
 # TODO: Inject
-WEB_PORT = 8080
-CNC_PORT = 8081
-GAME_PORT = 8082
+WEB_PORT = 9000
+CNC_PORT = 9001
+GAME_PORT = 9002
 
 app = express()
 
