@@ -121,6 +121,7 @@ cncSocket.onmessage = (event) ->
               when TILES.WALL then '#999'
               when TILES.FLOOR then '#ccc'
               when TILES.CORRIDOR then '#806424'
+              when TILES.DOOR then '#AB935E'
               when TILES.STAIRCASE_UP then 'green'
               when TILES.STAIRCASE_DOWN then 'red'
             if style

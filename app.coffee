@@ -142,7 +142,9 @@ class World
 
     @player = new Player(playerName)
     @player.pos = @level.pickPositionOfType TILES.STAIRCASE_UP
-    throw new Error("Couldn't find staircase") unless @player.pos
+    if not @player.pos
+      console.log @level.terrain.toString()
+      throw new Error("Couldn't find staircase up") unless @player.pos
     @level.actors.set @player.pos, @player
 
     @messages = null
@@ -179,7 +181,7 @@ class World
       moved = false
       if actor != neighbor
         if command in ['move', 'attack-move']
-          if tile in [TILES.FLOOR, TILES.CORRIDOR, TILES.STAIRCASE_UP, TILES.STAIRCASE_DOWN] and not neighbor
+          if tile in [TILES.FLOOR, TILES.CORRIDOR, TILES.DOOR, TILES.STAIRCASE_UP, TILES.STAIRCASE_DOWN] and not neighbor
             moved = true
             vec2.copy actor.pos, next
           if actor.isPlayer and pile?.length
@@ -309,7 +311,7 @@ class World
 
     # computer what areas the player can see
     diff = new SparseMap(@level.width, @level.height)
-    test = (x, y) => @level.terrain.get([x, y]) in [TILES.FLOOR, TILES.CORRIDOR, TILES.STAIRCASE_UP, TILES.STAIRCASE_DOWN]
+    test = (x, y) => @level.terrain.get([x, y]) in [TILES.FLOOR, TILES.CORRIDOR, TILES.DOOR, TILES.STAIRCASE_UP, TILES.STAIRCASE_DOWN]
     fov = new ROT.FOV.PreciseShadowcasting(test)
     [x, y] = @player.pos
     temp = [0, 0]
@@ -334,15 +336,24 @@ class Level
     @piles = new SparseMap(@width, @height)
 
     @terrain = new DenseMap(@width, @height)
+    pos = [0, 0]
     map = new ROT.Map.Digger(@width, @height)
     map.create (x, y, v) =>
-      @terrain.set [x, y], switch v
+      vec2.set pos, x, y
+      @terrain.set pos, switch v
         when 0 then TILES.FLOOR
         when 1 then TILES.VOID
-    @terrain.set @pickPositionOfType(TILES.FLOOR), TILES.STAIRCASE_UP
-    @terrain.set @pickPositionOfType(TILES.FLOOR), TILES.STAIRCASE_DOWN
-    console.log 'XXX', @terrain.toString()
-    console.log 'XXX', map.getRooms()
+
+    for corridor in map.getCorridors()
+      for x in [corridor._startX..corridor._endX]
+        for y in [corridor._startY..corridor._endY]
+          vec2.set pos, x, y
+          @terrain.set pos, TILES.CORRIDOR if @terrain.get(pos) is TILES.FLOOR
+
+    pos = @pickPositionOfType(TILES.FLOOR)
+    @terrain.set pos, TILES.STAIRCASE_UP
+    pos = @pickPositionOfType(TILES.FLOOR)
+    @terrain.set pos, TILES.STAIRCASE_DOWN
 
     @monsters = {}
     for monster in [new Mosquito(), new Slug(), new Slug(), new Slug(), new Slug()]
