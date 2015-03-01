@@ -21,6 +21,8 @@ MIN_PLAYERS = 2
 
 app = express()
 
+app.use express.static __dirname + '/static'
+
 app.get '/main.js', browserify('./lib/main.coffee', transform: ['coffeeify'])
 
 app.get '/', (req, res) ->
@@ -28,8 +30,9 @@ app.get '/', (req, res) ->
     <!doctype html>
     <html>
       <head>
-        <meta charset="utf-8"/>
         <title>Kragnoth</title>
+        <meta charset="utf-8"/>
+        <link rel="shortcut icon" href="favicon.png"/>
       </head>
       <body>
         <script src="/main.js"></script>
