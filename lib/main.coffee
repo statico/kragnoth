@@ -72,13 +72,9 @@ view = null
 views = {}
 
 resize = ->
-  console.log 'XXX', canvas.width, document.body.clientWidth
-  if document.body.clientWidth > canvas.width + 30
-    delete canvas.style.width
-    delete canvas.style.height
-  else
-    canvas.style.width = canvas.width / 2 + 'px'
-    canvas.style.height = canvas.height / 2 + 'px'
+  width = document.body.clientWidth - 20
+  canvas.style.width = width + 'px'
+  canvas.style.height = (width / canvas.width) * canvas.height + 'px'
 resize()
 angular.element(window).on 'resize', resize
 

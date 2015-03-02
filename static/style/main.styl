@@ -3,6 +3,10 @@ body
   color: white
   font-family: sans-serif
 
+body, img, canvas, *
+  image-rendering: pixelated
+  -webkit-image-rendering: pixelated
+
 // Doesn't seem to work...
 .ng-cloak, *[ng-cloak]
   display: none
@@ -20,3 +24,5 @@ body
   .old
     opacity: 0.5
 
+#map
+  border: 1px solid grey

@@ -3,6 +3,13 @@ body {
   color: #fff;
   font-family: sans-serif;
 }
+body,
+img,
+canvas,
+* {
+  image-rendering: pixelated;
+  -webkit-image-rendering: pixelated;
+}
 .ng-cloak,
 *[ng-cloak] {
   display: none;
@@ -21,4 +28,7 @@ body {
 }
 .messages .old {
   opacity: 0.5;
+}
+#map {
+  border: 1px solid #808080;
 }
