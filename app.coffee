@@ -342,6 +342,7 @@ class World
               if player.hp > player.maxHp
                 player.hp = player.maxHp
               player.items = (i for i in player.items when i.id != item.id)
+              delete @level.items[item.id]
             else
               @messages.push "Can't use #{ item.name } as a weapon"
 
