@@ -2,6 +2,11 @@
   "name": "kragnoth",
   "version": "1.0.0",
   "private": true,
+  "scripts": {
+    "dev": "nodemon -e coffee app.coffee",
+    "test": "nodeunit lib/*-test.coffee",
+    "test-dev": "nodemon -e coffee -x nodeunit lib/*-test.coffee"
+  },
   "dependencies": {
     "angular": "^1.3.14",
     "browserify-middleware": "^5.0.1",
