@@ -279,6 +279,9 @@ class World
               actor.items.push item
               article = if (/^[aeiouy]/i).test(item.name) then 'an' else 'a'
               msg = "#{ article } #{ item.name }"
+            when 'potion'
+              actor.items.push item
+              msg = 'some health!'
           if actor.isPlayer
             @messages.push "#{ actor.name } picks up #{ msg }"
           else
@@ -346,6 +349,10 @@ class World
           if item?
             if item.class is 'weapon'
               player.weapon = item
+            else if item.class is 'potion'
+              player.hp = Math.min (player.hp + item.hp), player.maxHp
+              player.items = (i for i in player.items when i.id != item.id)
+              delete @level.items[item.id]
             else
               @messages.push "Can't use #{ item.name } as a weapon"
 
@@ -436,9 +443,14 @@ class Level
       @monsters[monster.id] = monster
 
     @items = {}
-    for cls in ['gold', 'weapon']
-      for i in [0..3]
-        item = Item.createFromClass cls
+    itemSpec = [
+      { class: 'gold', min: 0, max: 3 },
+      { class: 'weapon', min: 0, max: 3},
+      { class: 'potion', min: 0, max: 1},
+    ]
+    for spec in itemSpec
+      for i in [spec.min..spec.max]
+        item = Item.createFromClass spec.class
         item.id = @world.getGUID()
         vec2.copy item.pos, @pickRandomSpawnablePosition()
         @piles.add item.pos, item
@@ -486,6 +498,7 @@ class Player extends Actor
     @isPlayer = true
     @ap = 5
     @hp = 50
+    @maxHp = 50
   simulate: ->
     obj = @lastInput
     @lastInput = null
@@ -560,6 +573,8 @@ class Item
         item.ap = random.integer spec.apMax, spec.apMin
       when 'gold'
         item.value = random.integer 15, 1
+      when 'potion'
+        item.hp = random.integer spec.hpMax, spec.hpMin
     return item
   toViewJSON: ->
     return {
@@ -573,6 +588,16 @@ ITEMS =
   gold:
     name: 'pieces of gold'
     class: 'gold'
+  majorHealthPotion:
+    name: 'major health potion'
+    class: 'potion'
+    hpMin: 10
+    hpMax: 20
+  minorHealthPotion:
+    name: 'minor health potion'
+    class: 'potion'
+    hpMin: 4
+    hpMax: 8
   shortSword:
     name: 'short sword'
     class: 'weapon'

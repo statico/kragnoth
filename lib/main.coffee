@@ -181,6 +181,7 @@ cncSocket.onmessage = (event) ->
           style = switch item.class
             when 'gold' then 'gold'
             when 'weapon' then 'orange'
+            when 'potion' then 'maroon'
           ctx.fillStyle = style
           ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
 
