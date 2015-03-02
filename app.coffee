@@ -416,7 +416,9 @@ class Level
 
     maybeDoor = (x, y) =>
       vec2.set pos, x, y
-      @terrain.set pos, TILES.DOOR if @terrain.get(pos) is TILES.FLOOR
+      tile = @terrain.get pos
+      if tile is TILES.FLOOR then @terrain.set pos, TILES.DOOR
+      if tile is TILES.VOID then @terrain.set pos, TILES.WALL
     for room in map.getRooms()
       x1 = room._x1 - 1
       x2 = room._x2 + 1
