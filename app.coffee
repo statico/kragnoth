@@ -65,8 +65,9 @@ cncWSServer.on 'request', (req) ->
         gameId = "game-#{ random.restrictedString [random.CHAR_TYPE.LOWERCASE], 4, 4 }"
         for playerId, playerConn of cncLobby
           console.log "Telling player #{ playerId } to start game #{ gameId }"
+          playerHostname = (playerId.split ':').pop()
           playerConn.sendUTF JSON.stringify
-            type: 'connect', url: "ws://127.0.0.1:#{ GAME_PORT }/", gameId: gameId
+            type: 'connect', url: "ws://#{ playerHostname }:#{ GAME_PORT }/", gameId: gameId
           delete cncLobby[playerId]
       else
         cncLobby[playerId] = conn

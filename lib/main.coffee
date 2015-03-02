@@ -94,7 +94,8 @@ uiService = angular.element(el).injector().get 'UIService'
 view = null
 views = {}
 
-playerId = "player-#{ random.restrictedString [random.CHAR_TYPE.LOWERCASE], 4, 4 }"
+randomId = random.restrictedString [random.CHAR_TYPE.LOWERCASE], 4, 4
+playerId = "player-#{ randomId }:#{ location.hostname }"
 gameId = null
 gameSocket = null
 gameSend = (obj) ->
@@ -103,7 +104,7 @@ gameSend = (obj) ->
   else
     setTimeout (-> gameSend obj), 1000
 
-cncSocket = new WebSocket('ws://127.0.0.1:9001', ['cnc'])
+cncSocket = new WebSocket("ws://#{ location.hostname }:9001", ['cnc'])
 cncSend = (obj) -> cncSocket.send JSON.stringify obj
 cncSocket.onopen = ->
   cncSend type: 'hello', playerId: playerId
