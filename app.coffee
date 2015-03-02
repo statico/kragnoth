@@ -339,6 +339,8 @@ class World
               player.weapon = item
             else if item.class == 'healthPotion'
               player.hp += item.hp
+              if player.hp > player.maxHp
+                player.hp = player.maxHp
               player.items = (i for i in player.items when i.id != item.id)
             else
               @messages.push "Can't use #{ item.name } as a weapon"
@@ -482,6 +484,7 @@ class Player extends Actor
     @isPlayer = true
     @ap = 5
     @hp = 50
+    @maxHp = 50
   simulate: ->
     obj = @lastInput
     @lastInput = null
