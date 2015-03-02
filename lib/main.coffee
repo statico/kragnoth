@@ -7,19 +7,8 @@ require 'mousetrap' # Sets window.Mousetrap
 {DenseMap} = require './map.coffee'
 {TILES} = require './terrain.coffee'
 
-document.body.innerHTML += '''
-<div style="color: grey">
-  <strong>Keys:</strong>
-  HJKL / YUBN / arrows to move-attack,
-  comma to pickup items,
-  &lt; and &gt; to go up and down stairs.
-  Click an inventory item to wield it.
-</div>
-'''
-
-canvas = document.createElement 'canvas'
+canvas = document.getElementById 'map'
 canvas.height = 0
-document.body.appendChild canvas
 ctx = canvas.getContext '2d'
 ctx.imageSmoothingEnabled = false
 ctx.webkitImageSmoothingEnabled = false
@@ -76,32 +65,8 @@ angular.module('kragnoth', [])
       $scope.$apply()
   )
 
-el = document.createElement 'div'
-el.innerHTML = '''
-<div ng-controller='UIController' style="display: flex">
-  <div style="flex:1; color: yellow">
-    <h1 ng-show="status">{{ status }}</h1>
-    <div ng-repeat="set in messages" ng-style="{'opacity': $first && 1.0 || 0.5 }">
-      <div ng-repeat="m in set">{{ m }}</div>
-    </div>
-  </div>
-  <div style="flex:1" ng-show="connected">
-    <strong>{{ player.name }} - {{ levelName }}</strong><br/>
-    Gold: {{ player.gold }}<br/>
-    HP: {{ player.hp }}<br/>
-    Weapon: {{ player.weapon.name || 'empty-handed' }}<br/>
-    <hr/>
-    {{ player.items.length }} items
-    <div ng-repeat="item in player.items" ng-mousedown="choose(item)">
-      · {{ item.name }}
-    </div>
-  </div>
-  <div style="flex:1" ng-show="connected">Tick: {{ tick }}</div>
-</div>
-'''
-document.body.appendChild el
-angular.bootstrap el, ['kragnoth']
-uiService = angular.element(el).injector().get 'UIService'
+angular.bootstrap document.body, ['kragnoth']
+uiService = angular.element(document.body).injector().get 'UIService'
 
 view = null
 views = {}

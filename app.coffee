@@ -25,8 +25,8 @@ argv = commander
   .parse(process.argv)
 
 app = express()
-app.use express.static __dirname + '/static'
 app.use stylus.middleware src: __dirname + '/static/style'
+app.use express.static __dirname + '/static'
 app.set 'view engine', 'jade'
 app.get '/main.js', browserify('./lib/main.coffee', transform: ['coffeeify'])
 app.get '/', (req, res) -> res.render 'index', argv: argv

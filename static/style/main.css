@@ -3,3 +3,22 @@ body {
   color: #fff;
   font-family: sans-serif;
 }
+.ng-cloak,
+*[ng-cloak] {
+  display: none;
+}
+.grid {
+  display: flex;
+}
+.grid .grid-cell {
+  flex: 1;
+}
+.legend {
+  color: #808080;
+}
+.messages {
+  color: #ff0;
+}
+.messages .old {
+  opacity: 0.5;
+}
