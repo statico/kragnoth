@@ -112,6 +112,17 @@ uiService = angular.element(el).injector().get 'UIService'
 view = null
 views = {}
 
+resize = ->
+  console.log 'XXX', canvas.width, document.body.clientWidth
+  if document.body.clientWidth > canvas.width + 30
+    delete canvas.style.width
+    delete canvas.style.height
+  else
+    canvas.style.width = canvas.width / 2 + 'px'
+    canvas.style.height = canvas.height / 2 + 'px'
+resize()
+angular.element(window).on 'resize', resize
+
 playerId = "player-#{ random.restrictedString [random.CHAR_TYPE.LOWERCASE], 4, 4 }"
 gameId = null
 gameSocket = null
@@ -157,6 +168,7 @@ cncSocket.onmessage = (event) ->
           views[index] = view
         canvas.width = width * rltiles.tileSize
         canvas.height = height * rltiles.tileSize
+        resize()
         uiService.setLevelName name
 
       if msg.type is 'tick'
