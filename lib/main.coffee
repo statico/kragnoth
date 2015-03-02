@@ -7,12 +7,6 @@ require 'mousetrap' # Sets window.Mousetrap
 {DenseMap} = require './map.coffee'
 {TILES} = require './terrain.coffee'
 
-document.body.style.cssText = '''
-  background: black;
-  color: white;
-  font-family: sans-serif;
-'''
-
 document.body.innerHTML += '''
 <div style="color: grey">
   <strong>Keys:</strong>

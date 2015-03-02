@@ -16,10 +16,12 @@
     "cson": "^2.0.0",
     "express": "^4.12.0",
     "gl-matrix": "^2.1.0",
+    "jade": "^1.9.2",
     "mousetrap": "^1.4.6",
     "promise": "^6.1.0",
     "random-ext": "^2.5.0",
     "rot.js": "https://github.com/ondras/rot.js/archive/master.tar.gz",
+    "stylus": "^0.50.0",
     "websocket": "^1.0.17"
   }
 }

@@ -8,6 +8,7 @@ commander = require 'commander'
 express = require 'express'
 http = require 'http'
 random = require 'random-ext'
+stylus = require 'stylus'
 websocket = require 'websocket'
 {vec2} = require 'gl-matrix'
 
@@ -24,26 +25,11 @@ argv = commander
   .parse(process.argv)
 
 app = express()
-
 app.use express.static __dirname + '/static'
-
+app.use stylus.middleware src: __dirname + '/static/style'
+app.set 'view engine', 'jade'
 app.get '/main.js', browserify('./lib/main.coffee', transform: ['coffeeify'])
-
-app.get '/', (req, res) ->
-  res.send """
-    <!doctype html>
-    <html>
-      <head>
-        <title>Kragnoth</title>
-        <meta charset="utf-8"/>
-        <link rel="shortcut icon" href="favicon.png"/>
-      </head>
-      <body>
-        <script>argv = #{ JSON.stringify argv.opts() };</script>
-        <script src="/main.js"></script>
-      </body>
-    </html>
-  """
+app.get '/', (req, res) -> res.render 'index', argv: argv
 
 app.listen argv.webPort, argv.host, ->
   console.log "Web server listening on http://#{ argv.host }:#{ argv.webPort }/"
