@@ -256,10 +256,10 @@ class World
         @level.piles.delete actor.pos
         loop
           item = pile.shift()
+          delete @level.items[item.id]
           switch item.class
             when 'gold'
               actor.gold += item.value
-              delete @level.items[item.id]
               msg = "#{ item.value } gold"
             when 'weapon'
               actor.items.push item
