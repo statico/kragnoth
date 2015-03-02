@@ -281,7 +281,7 @@ class World
               msg = "#{ article } #{ item.name }"
             when 'potion'
               actor.items.push item
-              msg = 'some health!'
+              msg = 'a potion!'
           if actor.isPlayer
             @messages.push "#{ actor.name } picks up #{ msg }"
           else
