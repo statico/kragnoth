@@ -287,7 +287,6 @@ class World
         if actor.isPlayer
           @messages.push "There nothing for #{ actor.name } to pickup"
 
-    # TODO - keep searching for 'player'
     goLevelUp = =>
       if @level.depth is 1
         @gameOver = true
@@ -320,14 +319,19 @@ class World
         when 'move', 'attack-move', 'attack'
           dir = command.direction
           if dir in ['up', 'down']
-            # TODO: make sure both players are on the square
             tile = @level.terrain.get player.pos
-            if dir is 'up' and tile is TILES.STAIRCASE_UP
-              goLevelUp()
-            else if dir is 'down' and tile is TILES.STAIRCASE_DOWN
-              goLevelDown()
+            actors = @level.actors.get player.pos
+            if actors
+              actors = (a for a in actors when a.isPlayer)
+            if actors?.length is argv.numPlayers
+              if dir is 'up' and tile is TILES.STAIRCASE_UP
+                goLevelUp()
+              else if dir is 'down' and tile is TILES.STAIRCASE_DOWN
+                goLevelDown()
+              else
+                @messages.push "There is no #{ dir } staircase here."
             else
-              @messages.push "There is no staircase here."
+              @messages.push "All #{ argv.numPlayers } players must be on the staircase."
           else
             oldPos = vec2.copy [0,0], player.pos
             updatePos player, command.command, command.direction
