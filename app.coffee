@@ -215,22 +215,26 @@ class World
       vec2.min next, next, [@level.width - 1, @level.height - 1]
       vec2.max next, next, [0, 0]
       tile = @level.terrain.get next
-      neighbors = @level.actors.get next
       pile = @level.piles.get next
 
+      neighbor = null
+      adjacent = @level.actors.get next
+      if adjacent
+        neighbor = (n for n in adjacent when not n.isPlayer)[0]
+
       moved = false
-      if actor != neighbors
+      if actor != neighbor
         if command in ['move', 'attack-move']
-          if tile in [TILES.FLOOR, TILES.CORRIDOR, TILES.DOOR, TILES.STAIRCASE_UP, TILES.STAIRCASE_DOWN] and not neighbors
+          if tile in [TILES.FLOOR, TILES.CORRIDOR, TILES.DOOR, TILES.STAIRCASE_UP, TILES.STAIRCASE_DOWN] and not neighbor
             moved = true
             vec2.copy actor.pos, next
           if actor.isPlayer and pile?.length
             @messages.push "There are items here: #{ (i.name for i in pile).join ', ' }"
-          if actor.isPlayer and neighbors and command != 'attack-move'
-            @messages.push "#{ neighbors[0].name } is in the way"
+          if actor.isPlayer and neighbor and command != 'attack-move'
+            @messages.push "#{ neighbor.name } is in the way"
         if command in ['attack-move', 'attack']
-          if neighbors
-            solveAttack actor, neighbors[0]
+          if neighbor
+            solveAttack actor, neighbor
       if moved
         for item in actor.items
           vec2.copy item.pos, actor.pos
