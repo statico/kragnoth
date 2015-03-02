@@ -11,7 +11,7 @@ random = require 'random-ext'
 websocket = require 'websocket'
 {vec2} = require 'gl-matrix'
 
-{SparseMap, DenseMap} = require './lib/map.coffee'
+{SparseMap, SparseMapList, DenseMap} = require './lib/map.coffee'
 {TILES} = require './lib/terrain.coffee'
 
 # TODO: Inject
@@ -184,7 +184,7 @@ class World
     @playerActors[id] = actor
     actor.pos = @level.pickPositionOfType TILES.STAIRCASE_UP
     throw new Error("Couldn't find staircase up") unless actor.pos
-    @level.actors.set actor.pos, actor
+    @level.actors.add actor.pos, actor
 
   handlePlayerInput: (id, msg) ->
     @playerActors[id].lastInput = msg
@@ -193,7 +193,7 @@ class World
     return @_nextGUID++
 
   kill: (actor) ->
-    @level.actors.delete actor.pos
+    @level.actors.remove actor.pos, actor
     delete @level.monsters[actor.id]
 
   simulate: (tickSpeed, tick) ->
@@ -215,22 +215,22 @@ class World
       vec2.min next, next, [@level.width - 1, @level.height - 1]
       vec2.max next, next, [0, 0]
       tile = @level.terrain.get next
-      neighbor = @level.actors.get next
+      neighbors = @level.actors.get next
       pile = @level.piles.get next
 
       moved = false
-      if actor != neighbor
+      if actor != neighbors
         if command in ['move', 'attack-move']
-          if tile in [TILES.FLOOR, TILES.CORRIDOR, TILES.DOOR, TILES.STAIRCASE_UP, TILES.STAIRCASE_DOWN] and not neighbor
+          if tile in [TILES.FLOOR, TILES.CORRIDOR, TILES.DOOR, TILES.STAIRCASE_UP, TILES.STAIRCASE_DOWN] and not neighbors
             moved = true
             vec2.copy actor.pos, next
           if actor.isPlayer and pile?.length
             @messages.push "There are items here: #{ (i.name for i in pile).join ', ' }"
-          if actor.isPlayer and neighbor and command != 'attack-move'
-            @messages.push "#{ neighbor.name } is in the way"
+          if actor.isPlayer and neighbors and command != 'attack-move'
+            @messages.push "#{ neighbors[0].name } is in the way"
         if command in ['attack-move', 'attack']
-          if neighbor
-            solveAttack actor, neighbor
+          if neighbors
+            solveAttack actor, neighbors[0]
       if moved
         for item in actor.items
           vec2.copy item.pos, actor.pos
@@ -327,8 +327,8 @@ class World
           else
             oldPos = vec2.copy [0,0], player.pos
             updatePos player, command.command, command.direction
-            @level.actors.delete oldPos
-            @level.actors.set player.pos, player
+            @level.actors.remove oldPos, player
+            @level.actors.add player.pos, player
         when 'pickup'
           handlePickup player
         when 'choose-item'
@@ -350,8 +350,8 @@ class World
         when 'move', 'attack-move', 'attack'
           oldPos = vec2.copy [0,0], monster.pos
           updatePos monster, command.command, command.direction
-          @level.actors.delete oldPos
-          @level.actors.set monster.pos, monster
+          @level.actors.remove oldPos, monster
+          @level.actors.add monster.pos, monster
         when 'pickup'
           handlePickup monster
       monster.lastTick = tick
@@ -380,7 +380,7 @@ class Level
   constructor: (@world, @depth, @name) ->
     @width = 60
     @height = 24
-    @actors = new SparseMap(@width, @height)
+    @actors = new SparseMapList(@width, @height)
     @piles = new SparseMap(@width, @height)
 
     @terrain = new DenseMap(@width, @height)
@@ -423,7 +423,7 @@ class Level
       monster.id = @world.getGUID()
       monster.lastTick = random.integer 10
       monster.pos = @pickRandomSpawnablePosition()
-      @actors.set monster.pos, monster
+      @actors.add monster.pos, monster
       @monsters[monster.id] = monster
 
     @items = {}
@@ -454,7 +454,7 @@ class Level
     pos = [0, 0]
     loop
       vec2.set pos, random.integer(@width-1), random.integer(@height-1)
-      return pos if @terrain.get(pos) is TILES.FLOOR and not @actors.get(pos)
+      return pos if @terrain.get(pos) is TILES.FLOOR and @actors.isEmpty(pos)
 
   toJSON: ->
     return {
