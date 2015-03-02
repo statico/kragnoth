@@ -1,10 +1,8 @@
 # immediate TODO
-1. multiplayer
-  - implementation
-  - try simulate-on-move
-1. combine monsters and items in diff (client only sees "things" at positions)
 1. room-based FOV
+1. fix localhost websocket bug
 1. renderer
+1. pause & speed adjust (remove monster speed-delta calculation)
 1. content
   - full armor
   - food
@@ -54,3 +52,4 @@
 - use Int8Array for DenseMap in places
 - optimize diffing
 - optimize vector garbage
+- combine monsters and items in diff (client only sees "things" at positions)
