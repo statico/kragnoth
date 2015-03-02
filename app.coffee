@@ -65,8 +65,9 @@ cncWSServer.on 'request', (req) ->
         gameId = "game-#{ random.restrictedString [random.CHAR_TYPE.LOWERCASE], 4, 4 }"
         for playerId, playerConn of cncLobby
           console.log "Telling player #{ playerId } to start game #{ gameId }"
+          playerHostname = (playerId.split ':').pop()
           playerConn.sendUTF JSON.stringify
-            type: 'connect', url: "ws://127.0.0.1:#{ GAME_PORT }/", gameId: gameId
+            type: 'connect', url: "ws://#{ playerHostname }:#{ GAME_PORT }/", gameId: gameId
           delete cncLobby[playerId]
       else
         cncLobby[playerId] = conn
@@ -222,7 +223,7 @@ class World
             vec2.copy actor.pos, next
           if actor.isPlayer and pile?.length
             @messages.push "There are items here: #{ (i.name for i in pile).join ', ' }"
-          if actor.isPlayer and neighbor and command != 'attack-move'
+          if actor.isPlayer and neighbor# and command != 'attack-move'
             @messages.push "#{ neighbor.name } is in the way"
         if command in ['attack-move', 'attack']
           if neighbor
@@ -268,8 +269,11 @@ class World
               msg = "#{ item.value } gold"
             when 'weapon'
               actor.items.push item
-              article = if /aeiouy/.test(item.name) then 'an' else 'a'
+              article = if /h?aeiouy/.test(item.name) then 'an' else 'a'
               msg = "#{ article } #{ item.name }"
+            when 'healthPotion'
+              actor.items.push item
+              msg = "some health!"
           if actor.isPlayer
             @messages.push "#{ actor.name } picks up #{ msg }"
           else
@@ -331,8 +335,11 @@ class World
           for i in player.items
             item = i if i.id is command.id
           if item?
-            if item.class = 'weapon'
+            if item.class == 'weapon'
               player.weapon = item
+            else if item.class == 'healthPotion'
+              player.hp += item.hp
+              player.items = (i for i in player.items when i.id != item.id)
             else
               @messages.push "Can't use #{ item.name } as a weapon"
 
@@ -423,7 +430,7 @@ class Level
       @monsters[monster.id] = monster
 
     @items = {}
-    for cls in ['gold', 'weapon']
+    for cls in ['gold', 'weapon', 'healthPotion']
       for i in [0..3]
         item = Item.createFromClass cls
         item.id = @world.getGUID()
@@ -547,6 +554,13 @@ class Item
     switch spec.class
       when 'weapon'
         item.ap = random.integer spec.apMax, spec.apMin
+      when 'healthPotion'
+        item.hp = random.integer 25, 5
+        if item.hp > 20
+          item.name = "major #{item.name}"
+        else if item.hp < 10
+          item.name = "minor #{item.name}"
+        item.name += " (#{item.hp})"
       when 'gold'
         item.value = random.integer 15, 1
     return item
@@ -562,6 +576,9 @@ ITEMS =
   gold:
     name: 'pieces of gold'
     class: 'gold'
+  healthPotion:
+    name: 'healt potion'
+    class: 'healthPotion'
   shortSword:
     name: 'short sword'
     class: 'weapon'
