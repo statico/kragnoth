@@ -80,7 +80,8 @@ el.innerHTML = '''
     Weapon: {{ player.weapon.name || 'empty-handed' }}<br/>
     <hr/>
     {{ player.items.length }} items
-    <div ng-repeat="item in player.items" ng-mousedown="choose(item)">
+    <div ng-repeat="item in player.items" ng-mousedown="choose(item)"
+      style="cursor: pointer;">
       · {{ item.name }}
     </div>
   </div>
@@ -178,6 +179,7 @@ cncSocket.onmessage = (event) ->
           style = switch item.class
             when 'gold' then 'gold'
             when 'weapon' then 'orange'
+            when 'healthPotion' then 'maroon'
           ctx.fillStyle = style
           ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
 
