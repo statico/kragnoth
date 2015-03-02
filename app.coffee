@@ -277,7 +277,7 @@ class World
               msg = "#{ item.value } gold"
             when 'weapon'
               actor.items.push item
-              article = if /aeiouy/.test(item.name) then 'an' else 'a'
+              article = if (/^[aeiouy]/i).test(item.name) then 'an' else 'a'
               msg = "#{ article } #{ item.name }"
           if actor.isPlayer
             @messages.push "#{ actor.name } picks up #{ msg }"
