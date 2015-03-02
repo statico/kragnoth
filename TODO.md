@@ -1,5 +1,4 @@
 # immediate TODO
-1. room-based FOV
 1. fix localhost websocket bug
 1. renderer
 1. pause & speed adjust (remove monster speed-delta calculation)
@@ -48,7 +47,8 @@
 # client-side
 - reconnecting websockets
 
-# ideas
+# dev ideas
+- dependency injection
 - use Int8Array for DenseMap in places
 - optimize diffing
 - optimize vector garbage

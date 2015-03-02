@@ -107,7 +107,7 @@ gameSend = (obj) ->
   else
     setTimeout (-> gameSend obj), 1000
 
-cncSocket = new WebSocket('ws://127.0.0.1:9001', ['cnc'])
+cncSocket = new WebSocket("ws://#{ argv.host }:#{ argv.cncPort }", ['cnc'])
 cncSend = (obj) -> cncSocket.send JSON.stringify obj
 cncSocket.onopen = ->
   cncSend type: 'hello', playerId: playerId

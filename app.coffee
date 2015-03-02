@@ -15,12 +15,12 @@ websocket = require 'websocket'
 {TILES} = require './lib/terrain.coffee'
 
 # TODO: Inject
-WEB_PORT = 9000
-CNC_PORT = 9001
-GAME_PORT = 9002
-
 argv = commander
   .option('-n, --numPlayers <n>', "Number of players per party", parseInt, 2)
+  .option('-h, --host <host>', "Bind port to this", String, '127.0.0.1')
+  .option('--webPort <port>', "Main web UI port", parseInt, 9000)
+  .option('--cncPort <port>', "Command and control port", parseInt, 9001)
+  .option('--gamePort <port>', "Game port", parseInt, 9002)
   .parse(process.argv)
 
 app = express()
@@ -30,7 +30,7 @@ app.use express.static __dirname + '/static'
 app.get '/main.js', browserify('./lib/main.coffee', transform: ['coffeeify'])
 
 app.get '/', (req, res) ->
-  res.send '''
+  res.send """
     <!doctype html>
     <html>
       <head>
@@ -39,16 +39,17 @@ app.get '/', (req, res) ->
         <link rel="shortcut icon" href="favicon.png"/>
       </head>
       <body>
+        <script>argv = #{ JSON.stringify argv.opts() };</script>
         <script src="/main.js"></script>
       </body>
     </html>
-    '''
+  """
 
-app.listen WEB_PORT, '0.0.0.0', ->
-  console.log "Web server listening on http://127.0.0.1:#{ WEB_PORT }/"
+app.listen argv.webPort, argv.host, ->
+  console.log "Web server listening on http://#{ argv.host }:#{ argv.webPort }/"
 
 cncServer = http.createServer()
-cncServer.listen CNC_PORT, '0.0.0.0', -> console.log "CNC server on #{ CNC_PORT }"
+cncServer.listen argv.cncPort, argv.host, -> console.log "CNC server on #{ argv.cncPort }"
 
 cncLobby = {}
 cncWSServer = new websocket.server(httpServer: cncServer)
@@ -70,7 +71,7 @@ cncWSServer.on 'request', (req) ->
         for playerId, playerConn of cncLobby
           console.log "Telling player #{ playerId } to start game #{ gameId }"
           playerConn.sendUTF JSON.stringify
-            type: 'connect', url: "ws://127.0.0.1:#{ GAME_PORT }/", gameId: gameId
+            type: 'connect', url: "ws://#{ argv.host }:#{ argv.gamePort }/", gameId: gameId
           delete cncLobby[playerId]
       else
         cncLobby[playerId] = conn
@@ -83,7 +84,7 @@ cncWSServer.on 'request', (req) ->
   send type: 'hello'
 
 gameServer = http.createServer()
-gameServer.listen GAME_PORT, '0.0.0.0', -> console.log "Game server on #{ GAME_PORT }"
+gameServer.listen argv.gamePort, argv.host, -> console.log "Game server on #{ argv.gamePort }"
 
 gameSchedulers = {}
 gameWSServer = new websocket.server(httpServer: gameServer)
