@@ -28,6 +28,26 @@ class SparseMap extends Map
       delete @map[vec[1]] unless Object.keys(@map[vec[1]]).length
     return
 
+class SparseMapList extends SparseMap
+  constructor: (@width, @height) ->
+    @map = {}
+  add: (vec, value) ->
+    list = @get(vec) ? []
+    list.push value
+    @set vec, list
+  remove: (vec, value) ->
+    list = @get(vec)
+    if list?
+      index = list.indexOf value
+      if index != -1
+        list.splice index, 1
+      if list.length > 0
+        @set vec, list
+      else
+        @delete vec
+  isEmpty: (vec) ->
+    return not @get(vec)?
+
 class DenseMap extends Map
   constructor: (@width, @height) ->
     @map = new Array(@height)
@@ -56,4 +76,5 @@ class DenseMap extends Map
     return ret
 
 exports.SparseMap = SparseMap
+exports.SparseMapList = SparseMapList
 exports.DenseMap = DenseMap
