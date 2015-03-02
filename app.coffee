@@ -261,7 +261,7 @@ class World
 
     handlePickup = (actor) =>
       pile = @level.piles.get actor.pos
-      if pile?.length
+      if pile
         @level.piles.delete actor.pos
         loop
           item = pile.shift()
@@ -381,7 +381,7 @@ class Level
     @width = 60
     @height = 24
     @actors = new SparseMapList(@width, @height)
-    @piles = new SparseMap(@width, @height)
+    @piles = new SparseMapList(@width, @height)
 
     @terrain = new DenseMap(@width, @height)
     pos = [0, 0]
@@ -432,9 +432,7 @@ class Level
         item = Item.createFromClass cls
         item.id = @world.getGUID()
         vec2.copy item.pos, @pickRandomSpawnablePosition()
-        pile = @piles.get(item.pos) ? []
-        pile.push item
-        @piles.set item.pos, pile
+        @piles.add item.pos, item
         @items[item.id] = item
 
   pickPositionOfType: (type) ->
