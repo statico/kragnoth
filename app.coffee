@@ -4,6 +4,7 @@ require 'coffee-script/register' # for node-inspector
 
 ROT = require 'rot.js'
 browserify = require 'browserify-middleware'
+commander = require 'commander'
 express = require 'express'
 http = require 'http'
 random = require 'random-ext'
@@ -17,7 +18,10 @@ websocket = require 'websocket'
 WEB_PORT = 9000
 CNC_PORT = 9001
 GAME_PORT = 9002
-MIN_PLAYERS = 2
+
+argv = commander
+  .option('-n, --numPlayers <n>', "Number of players per party", parseInt, 2)
+  .parse(process.argv)
 
 app = express()
 
@@ -61,7 +65,7 @@ cncWSServer.on 'request', (req) ->
         console.error "Error: #{ playerId } already in lobby"
         return
       cncLobby[playerId] = conn
-      if Object.keys(cncLobby).length >= MIN_PLAYERS
+      if Object.keys(cncLobby).length >= argv.numPlayers
         gameId = "game-#{ random.restrictedString [random.CHAR_TYPE.LOWERCASE], 4, 4 }"
         for playerId, playerConn of cncLobby
           console.log "Telling player #{ playerId } to start game #{ gameId }"
@@ -98,7 +102,7 @@ gameWSServer.on 'request', (req) ->
         scheduler = new Scheduler(new World())
         gameSchedulers[gameId] = scheduler
       scheduler.addPlayer playerId, conn
-      if Object.keys(scheduler.players).length >= MIN_PLAYERS
+      if Object.keys(scheduler.players).length >= argv.numPlayers
         scheduler.start()
         conn.on 'close', ->
           scheduler.world.gameOver = true
