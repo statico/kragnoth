@@ -1,5 +1,4 @@
 # immediate TODO
-1. fix localhost websocket bug
 1. renderer
 1. pause & speed adjust (remove monster speed-delta calculation)
 1. content

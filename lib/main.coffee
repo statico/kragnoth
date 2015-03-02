@@ -1,12 +1,11 @@
 angular = require 'angular'
 random = require 'random-ext'
+rltiles = require '../static/rltiles/rltiles-2d.json'
 
 require 'mousetrap' # Sets window.Mousetrap
 
 {DenseMap} = require './map.coffee'
 {TILES} = require './terrain.coffee'
-
-SIZE = 15
 
 document.body.style.cssText = '''
   background: black;
@@ -30,6 +29,21 @@ document.body.appendChild canvas
 ctx = canvas.getContext '2d'
 ctx.imageSmoothingEnabled = false
 ctx.webkitImageSmoothingEnabled = false
+
+drawTile = do ->
+  namesToIndex = {}
+  namesToIndex[key] = i for key, i in rltiles.tiles
+  s = rltiles.tileSize
+  w = rltiles.width
+  tileset = new Image()
+  tileset.src = '/rltiles/rltiles-2d.png'
+  return (x, y, key) ->
+    return unless key of namesToIndex
+    i = namesToIndex[key]
+    ty = Math.floor(i / w)
+    tx = i - ty * w
+    ctx.drawImage tileset, tx * s, ty * s, s, s, x * s, y * s, s, s
+    return
 
 angular.module('kragnoth', [])
   .service('UIService', ($rootScope) ->
@@ -141,8 +155,8 @@ cncSocket.onmessage = (event) ->
           view = new DenseMap(width, height)
           view.fill -> {}
           views[index] = view
-        canvas.width = width * SIZE
-        canvas.height = height * SIZE
+        canvas.width = width * rltiles.tileSize
+        canvas.height = height * rltiles.tileSize
         uiService.setLevelName name
 
       if msg.type is 'tick'
@@ -162,41 +176,35 @@ cncSocket.onmessage = (event) ->
         for y, row of view.map
           for x, obj of row
             ctx.globalAlpha = if obj.tick is tick then 1.0 else 0.6
-            style = switch obj.terrain
-              when TILES.VOID then '#333'
-              when TILES.WALL then '#999'
-              when TILES.FLOOR then '#ccc'
-              when TILES.CORRIDOR then '#806424'
-              when TILES.DOOR then '#AB935E'
-              when TILES.STAIRCASE_UP then 'green'
-              when TILES.STAIRCASE_DOWN then 'red'
-            if style
-              ctx.fillStyle = style
-              ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
+            drawTile x, y, switch obj.terrain
+              when TILES.DOOR then 'corridor'
+            drawTile x, y, switch obj.terrain
+              when TILES.VOID then 'dark_part_of_a_room'
+              when TILES.WALL then 'dngn_rock_wall_07'
+              when TILES.FLOOR then 'floor_of_a_room'
+              when TILES.CORRIDOR then 'corridor'
+              when TILES.DOOR then 'open_door_v'
+              when TILES.STAIRCASE_UP then 'staircase_up'
+              when TILES.STAIRCASE_DOWN then 'staircase_down'
 
         ctx.globalAlpha = 1.0
 
         for item in msg.items
           [x, y] = item.pos
-          style = switch item.class
-            when 'gold' then 'gold'
-            when 'weapon' then 'orange'
-            when 'potion' then 'maroon'
-          ctx.fillStyle = style
-          ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
+          drawTile x, y, switch item.class
+            when 'gold' then 'gold_piece'
+            when 'weapon' then 'short_sword2'
+            when 'potion' then 'purple_red'
 
         for pid, obj of msg.players
           [x, y] = obj.pos
-          ctx.fillStyle = 'pink'
-          ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
+          drawTile x, y, 'duane'
 
         for monster in msg.monsters
           [x, y] = monster.pos
-          style = switch monster.name
-            when 'mosquito' then '#45A9C4'
-            when 'slug' then '#00c'
-          ctx.fillStyle = style
-          ctx.fillRect x * SIZE, y * SIZE, SIZE, SIZE
+          drawTile x, y, switch monster.name
+            when 'mosquito' then 'giant_mosquito'
+            when 'slug' then 'blue_jelly'
 
   return
 
