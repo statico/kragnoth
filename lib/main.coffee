@@ -16,7 +16,11 @@ document.body.style.cssText = '''
 
 document.body.innerHTML += '''
 <div style="color: grey">
-  <strong>Keys:</strong> HJKL / YUBN / arrows to move/attack, comma to pickup.
+  <strong>Keys:</strong>
+  HJKL / YUBN / arrows to move-attack,
+  comma to pickup items,
+  &lt; and &gt; to go up and down stairs.
+  Click an inventory item to wield it.
 </div>
 '''
 
