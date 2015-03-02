@@ -10,15 +10,27 @@ canvas,
   image-rendering: pixelated;
   -webkit-image-rendering: pixelated;
 }
-.ng-cloak,
-*[ng-cloak] {
-  display: none;
+[ng:cloak],
+[ng-cloak],
+.ng-cloak {
+  display: none !important;
 }
 .grid {
   display: flex;
 }
 .grid .grid-cell {
   flex: 1;
+}
+.vert-grid {
+  display: flex;
+  flex-direction: column;
+  max-height: 100vh;
+}
+.vert-grid .vert-fill {
+  flex: 1;
+}
+.ui {
+  padding: 10px;
 }
 .legend {
   color: #808080;
@@ -31,4 +43,7 @@ canvas,
 }
 #map {
   border: 1px solid #808080;
+}
+#map-container {
+  overflow: scroll;
 }

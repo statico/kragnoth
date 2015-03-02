@@ -4,18 +4,19 @@ html
     meta(charset='utf-8')
     link(rel='shortcut icon', href='/favicon.png')
     link(rel='stylesheet', type='text/css', href='/style/main.css')
-  body
+  body.vert-grid
 
-    div.legend
+    div.legend.ui
       strong Keys:
       | HJKL / YUBN / arrows to move-attack,
       | comma to pickup items,
       | &lt; and &gt; to go up and down stairs.
       | Click an inventory item to wield it.
 
-    canvas#map
+    div(ng-cloak)#map-container.vert-fill
+      canvas#map
 
-    div(ng-controller='UIController', ng-cloak).grid
+    div(ng-controller='UIController', ng-cloak).grid.ui
       div.grid-cell.messages
         h1(ng-show='status') {{ status }}
         div(ng-repeat='set in messages', ng-class='{"old": !$first}')

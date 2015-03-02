@@ -7,13 +7,23 @@ body, img, canvas, *
   image-rendering: pixelated
   -webkit-image-rendering: pixelated
 
-.ng-cloak, *[ng-cloak]
-  display: none
+[ng\:cloak], [ng-cloak], .ng-cloak
+  display: none !important
 
 .grid
   display: flex
   .grid-cell
     flex: 1
+
+.vert-grid
+  display: flex
+  flex-direction: column
+  max-height: 100vh
+  .vert-fill
+    flex: 1
+
+.ui
+  padding: 10px
 
 .legend
   color: grey
@@ -25,3 +35,5 @@ body, img, canvas, *
 
 #map
   border: 1px solid grey
+#map-container
+  overflow: scroll

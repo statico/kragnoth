@@ -1,5 +1,7 @@
 angular = require 'angular'
 random = require 'random-ext'
+{vec2} = require 'gl-matrix'
+
 rltiles = require '../static/rltiles/rltiles-2d.json'
 
 require 'mousetrap' # Sets window.Mousetrap
@@ -7,6 +9,7 @@ require 'mousetrap' # Sets window.Mousetrap
 {DenseMap} = require './map.coffee'
 {TILES} = require './terrain.coffee'
 
+canvasContainer = document.getElementById 'map-container'
 canvas = document.getElementById 'map'
 canvas.height = 0
 ctx = canvas.getContext '2d'
@@ -71,13 +74,6 @@ uiService = angular.element(document.body).injector().get 'UIService'
 view = null
 views = {}
 
-resize = ->
-  width = document.body.clientWidth - 20
-  canvas.style.width = width + 'px'
-  canvas.style.height = (width / canvas.width) * canvas.height + 'px'
-resize()
-angular.element(window).on 'resize', resize
-
 playerId = "player-#{ random.restrictedString [random.CHAR_TYPE.LOWERCASE], 4, 4 }"
 gameId = null
 gameSocket = null
@@ -96,6 +92,7 @@ cncSocket.onclose = ->
   uiService.setStatus 'Game Over'
 cncSocket.onmessage = (event) ->
   msg = JSON.parse event.data
+  lastPlayerScrollPos = [-100, -100]
 
   if msg.type is 'hello'
     uiService.setStatus 'Waiting for game...'
@@ -123,7 +120,6 @@ cncSocket.onmessage = (event) ->
           views[index] = view
         canvas.width = width * rltiles.tileSize
         canvas.height = height * rltiles.tileSize
-        resize()
         uiService.setLevelName name
 
       if msg.type is 'tick'
@@ -131,7 +127,14 @@ cncSocket.onmessage = (event) ->
         uiService.setTick tick
         uiService.addMessages(messages) if messages.length
         for pid, obj of players
-          uiService.setPlayer obj if pid is playerId
+          if pid is playerId
+            uiService.setPlayer obj
+            # TODO: less jumpy scrolling
+            if vec2.distance(lastPlayerScrollPos, obj.pos) > 5
+              el = canvasContainer
+              el.scrollLeft = obj.pos[0] * rltiles.tileSize - el.clientWidth / 2
+              el.scrollTop = obj.pos[1] * rltiles.tileSize - el.clientHeight / 2
+              vec2.copy lastPlayerScrollPos, obj.pos
 
         for y, row of diff.map
           for x, obj of row
