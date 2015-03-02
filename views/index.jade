@@ -5,14 +5,17 @@ html
     link(rel='shortcut icon', href='/favicon.png')
     link(rel='stylesheet', type='text/css', href='/style/main.css')
   body
+
     div.legend
       strong Keys:
       | HJKL / YUBN / arrows to move-attack,
       | comma to pickup items,
       | &lt; and &gt; to go up and down stairs.
       | Click an inventory item to wield it.
+
     canvas#map
-    div(ng-controller='UIController', style='display: none').grid
+
+    div(ng-controller='UIController', ng-cloak).grid
       div.grid-cell.messages
         h1(ng-show='status') {{ status }}
         div(ng-repeat='set in messages', ng-class='{"old": !$first}')
@@ -28,6 +31,7 @@ html
           | · {{ item.name }}
       div(ng-show='connected').grid-cell
           | Tick: {{ tick }}
+
     script.
       argv = !{ JSON.stringify(argv.opts()) };
     script(src='/main.js')
