@@ -344,7 +344,7 @@ class World
           for i in player.items
             item = i if i.id is command.id
           if item?
-            if item.class = 'weapon'
+            if item.class is 'weapon'
               player.weapon = item
             else
               @messages.push "Can't use #{ item.name } as a weapon"
