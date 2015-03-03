@@ -13,7 +13,7 @@ websocket = require 'websocket'
 {vec2} = require 'gl-matrix'
 
 {SparseMap, SparseMapList, DenseMap} = require './lib/map.coffee'
-{TILES, WALKABLE_TILES} = require './lib/terrain.coffee'
+{TILES, WALKABLE_TILES, DIR_TO_VEC, ZERO} = require './lib/terrain.coffee'
 
 # TODO: Inject
 argv = commander
@@ -81,7 +81,6 @@ gameWSServer.on 'request', (req) ->
     console.log 'Game error', err
   conn.on 'message', (event) ->
     msg = JSON.parse if event.type is 'utf8' then event.utf8Data else event.binaryData
-    console.log 'Game message', msg
     if msg.type is 'hello'
       {playerId, gameId} = msg
       scheduler = gameSchedulers[gameId]
@@ -187,20 +186,11 @@ class World
     @messages = if tick is 1 then ['Welcome to Kragnoth'] else []
 
     updatePos = (actor, command, dir) =>
-      delta = switch dir
-        when 'n' then [0, -1]
-        when 's' then [0, 1]
-        when 'e' then [1, 0]
-        when 'w' then [-1, 0]
-        when 'nw' then [-1, -1]
-        when 'sw' then [-1, 1]
-        when 'ne' then [1, -1]
-        when 'se' then [1, 1]
-        else [0, 0]
+      delta = DIR_TO_VEC[dir] or ZERO
       next = [0, 0]
       vec2.add next, actor.pos, delta
       vec2.min next, next, [@level.width - 1, @level.height - 1]
-      vec2.max next, next, [0, 0]
+      vec2.max next, next, ZERO
       tile = @level.terrain.get next
       pile = @level.piles.get next
 
@@ -354,7 +344,7 @@ class World
     for _, monster of @level.monsters
       delta = (tick - monster.lastTick) * tickSpeed
       continue unless delta >= 1000 / monster.speed
-      command = monster.simulate()
+      command = monster.simulate(this)
       switch command?.command
         when 'move', 'attack-move', 'attack'
           oldPos = vec2.copy [0,0], monster.pos
@@ -368,10 +358,10 @@ class World
     # computer what areas the player can see
     pos = [0, 0]
     diff = new SparseMap(@level.width, @level.height)
-    test = (x, y) =>
+    isWalkable = (x, y) =>
       vec2.set pos, x, y
       @level.terrain.get(pos) of WALKABLE_TILES
-    fov = new ROT.FOV.PreciseShadowcasting(test)
+    fov = new ROT.FOV.PreciseShadowcasting(isWalkable)
     for _, player of @playerActors
       [x, y] = player.pos
       fov.compute x, y, 10, (x, y, _, visible) =>
@@ -515,8 +505,9 @@ class Player extends Actor
 class Monster extends Actor
   constructor: ->
     super()
+    @pos = [0, 0]
     @isPlayer = false
-  simulate: ->
+  simulate: (world) ->
     dir = random.pick 'n w s e nw sw se ne'.split ' '
     return { command: 'attack-move', direction: dir }
   toJSON: ->
@@ -537,7 +528,6 @@ class Mosquito extends Monster
   constructor: ->
     super()
     @name = 'mosquito'
-    @pos = [10, 10]
     @speed = 10
     @hp = 1
     @ap = 1
@@ -546,10 +536,57 @@ class Slug extends Monster
   constructor: ->
     super()
     @name = 'slug'
-    @pos = [11, 10]
     @speed = 1
     @hp = 10
     @ap = 0
+
+class Seeker extends Monster
+  constructor: ->
+    super()
+    @name = 'seeker'
+    @speed = 3
+    @sightRadius = 5
+    @hp = 10
+    @ap = 2
+  simulate: (world) ->
+    {level, actors} = world
+
+    vision = new SparseMap(level.width, level.height)
+    pos = [0, 0]
+    isWalkable = (x, y) ->
+      vec2.set pos, x, y
+      return level.terrain.get(pos) of WALKABLE_TILES
+    fov = new ROT.FOV.PreciseShadowcasting(isWalkable)
+    fov.compute @pos[0], @pos[1], 4, (x, y, _, visible) ->
+      vec2.set pos, x, y
+      vision.set pos, true
+    for y of vision.map
+      for x of vision.map[y]
+        vec2.set pos, x, y
+        actors = level.actors.get pos
+        if actors?
+          for actor in actors
+            if actor.isPlayer
+              target = actor.pos
+              break
+
+    if not target
+      return super(world)
+
+    steps = []
+    path = new ROT.Path.AStar(target[0], target[1], isWalkable)
+    path.compute @pos[0], @pos[1], (x, y) ->
+      steps.push [x, y]
+
+    if steps.length is 0
+      return super(world)
+    if steps.length is 1
+      throw new Error("Weird single step from #{ @pos } to #{ target }")
+    if steps.length > 1
+      vec2.sub pos, steps[1], steps[0]
+      for dir, offset of DIR_TO_VEC
+        if pos[0] is offset[0] and pos[1] is offset[1]
+          return { command: 'attack-move', direction: dir }
 
 class Item
   constructor: ->

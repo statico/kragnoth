@@ -13,3 +13,15 @@ WALKABLE_TILES[TILES.CORRIDOR] = true
 WALKABLE_TILES[TILES.DOOR] = true
 WALKABLE_TILES[TILES.STAIRCASE_UP] = true
 WALKABLE_TILES[TILES.STAIRCASE_DOWN] = true
+
+exports.DIR_TO_VEC = DIR_TO_VEC =
+  n: [0, -1]
+  s: [0, 1]
+  e: [1, 0]
+  w: [-1, 0]
+  nw: [-1, -1]
+  sw: [-1, 1]
+  ne: [1, -1]
+  se: [1, 1]
+
+exports.ZERO = ZERO = [0, 0]

@@ -196,6 +196,7 @@ cncSocket.onmessage = (event) ->
           drawTile x, y, switch monster.name
             when 'mosquito' then 'giant_mosquito'
             when 'slug' then 'blue_jelly'
+            when 'seeker' then 'jelly'
 
   return
 
