@@ -10,6 +10,8 @@ require 'mousetrap' # Sets window.Mousetrap
 {DenseMap} = require './map.coffee'
 {TILES} = require './terrain.coffee'
 
+AVATARS = ['adolf', 'agnes', 'donald', 'duane', 'edmund', 'erica', 'frances', 'francis']
+
 canvasContainer = document.getElementById 'map-container'
 canvas = document.getElementById 'map'
 canvas.height = 0
@@ -82,6 +84,7 @@ view = null
 views = {}
 
 playerId = "player-#{ random.restrictedString [random.CHAR_TYPE.LOWERCASE], 4, 4 }"
+playerAvatars = {}
 gameId = null
 gameSocket = null
 gameSend = (obj) ->
@@ -133,7 +136,10 @@ cncSocket.onmessage = (event) ->
         {tick, diff, players, messages, levelName} = msg
         uiService.setTick tick
         uiService.addMessages(messages) if messages.length
+
         for pid, obj of players
+          if pid not of playerAvatars
+            playerAvatars[pid] = AVATARS.shift()
           if pid is playerId
             uiService.setPlayer obj
             if vec2.distance(lastPlayerScrollPos, obj.pos) > 5
@@ -183,7 +189,7 @@ cncSocket.onmessage = (event) ->
 
         for pid, obj of msg.players
           [x, y] = obj.pos
-          drawTile x, y, 'duane'
+          drawTile x, y, playerAvatars[pid]
 
         for monster in msg.monsters
           [x, y] = monster.pos
