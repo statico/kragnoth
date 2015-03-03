@@ -422,22 +422,29 @@ class Level
     @terrain.set pos, TILES.STAIRCASE_DOWN
 
     @monsters = {}
-    for monster in [new Mosquito(), new Slug(), new Slug(), new Slug(), new Slug()]
-      monster.id = @world.getGUID()
-      monster.lastTick = random.integer 10
-      monster.pos = @pickRandomSpawnablePosition()
-      @actors.add monster.pos, monster
-      @monsters[monster.id] = monster
+    monsterSpec = [
+      { cls: Mosquito, min: 1, max: 3 }
+      { cls: Slug, min: 3, max: 6 }
+      { cls: Seeker, min: 5, max: 8 }
+    ]
+    for {cls, min, max} in monsterSpec
+      for i in [0..random.integer(max, min)]
+        monster = new cls()
+        monster.id = @world.getGUID()
+        monster.lastTick = random.integer 10
+        monster.pos = @pickRandomSpawnablePosition()
+        @actors.add monster.pos, monster
+        @monsters[monster.id] = monster
 
     @items = {}
     itemSpec = [
-      { class: 'gold', min: 0, max: 3 },
-      { class: 'weapon', min: 0, max: 3},
-      { class: 'potion', min: 0, max: 1},
+      { cls: 'gold', min: 0, max: 3 },
+      { cls: 'weapon', min: 0, max: 3},
+      { cls: 'potion', min: 0, max: 1},
     ]
-    for spec in itemSpec
-      for i in [spec.min..spec.max]
-        item = Item.createFromClass spec.class
+    for {cls, min, max} in itemSpec
+      for i in [0..random.integer(max, min)]
+        item = Item.createFromClass cls
         item.id = @world.getGUID()
         vec2.copy item.pos, @pickRandomSpawnablePosition()
         @piles.add item.pos, item
