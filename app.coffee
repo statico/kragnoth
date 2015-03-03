@@ -204,31 +204,38 @@ class World
       tile = @level.terrain.get next
       pile = @level.piles.get next
 
-      neighbor = null
-      adjacent = @level.actors.get next
-      if adjacent
-        neighbor = (n for n in adjacent when not n.isPlayer)[0]
+      # Players can overlap players. Players cannot attack themselves or other players. Monsters
+      # cannot overlap players.
+      defender = null
+      allNeighbors = @level.actors.get next
+      numNeighbors = allNeighbors?.length or 0
+      numMonsterNeighbors = 0
+      numPlayerNeighbors = 0
+      if allNeighbors
+        for a in allNeighbors
+          if a.isPlayer
+            numPlayerNeighbors++
+          else
+            numMonsterNeighbors++
+            defender ?= a
 
       moved = false
-      if actor != neighbor
+      if actor != defender
         if command in ['move', 'attack-move']
-          if tile in [TILES.FLOOR, TILES.CORRIDOR, TILES.DOOR, TILES.STAIRCASE_UP, TILES.STAIRCASE_DOWN] and not neighbor
-            moved = true
-            vec2.copy actor.pos, next
+          if tile in [TILES.FLOOR, TILES.CORRIDOR, TILES.DOOR, TILES.STAIRCASE_UP, TILES.STAIRCASE_DOWN]
+            if (actor.isPlayer and numMonsterNeighbors is 0) or (not actor.isPlayer and numNeighbors is 0)
+              moved = true
+              vec2.copy actor.pos, next
           if actor.isPlayer and pile?.length
             @messages.push "There are items here: #{ (i.name for i in pile).join ', ' }"
-          if actor.isPlayer and neighbor and command != 'attack-move'
-            @messages.push "#{ neighbor.name } is in the way"
+          if actor.isPlayer and defender and command != 'attack-move'
+            @messages.push "#{ defender.name } is in the way"
         if command in ['attack-move', 'attack']
-          if neighbor
-            solveAttack actor, neighbor
+          if defender
+            solveAttack actor, defender
       if moved
         for item in actor.items
           vec2.copy item.pos, actor.pos
-        if tile is TILES.STAIRCASE_UP
-          @messages.push "There is a staircase up here."
-        if tile is TILES.STAIRCASE_DOWN
-          @messages.push "There is a staircase down here."
       return
 
     solveAttack = (attacker, defender) =>
