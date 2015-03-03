@@ -1,5 +1,6 @@
 angular = require 'angular'
 random = require 'random-ext'
+Tween = require 'tween.js'
 {vec2} = require 'gl-matrix'
 
 rltiles = require '../static/rltiles/rltiles-2d.json'
@@ -71,6 +72,12 @@ angular.module('kragnoth', [])
 angular.bootstrap document.body, ['kragnoth']
 uiService = angular.element(document.body).injector().get 'UIService'
 
+tweener = null
+animate = (time) ->
+  requestAnimationFrame animate
+  tweener?.update time
+animate()
+
 view = null
 views = {}
 
@@ -129,11 +136,19 @@ cncSocket.onmessage = (event) ->
         for pid, obj of players
           if pid is playerId
             uiService.setPlayer obj
-            # TODO: less jumpy scrolling
             if vec2.distance(lastPlayerScrollPos, obj.pos) > 5
               el = canvasContainer
-              el.scrollLeft = obj.pos[0] * rltiles.tileSize - el.clientWidth / 2
-              el.scrollTop = obj.pos[1] * rltiles.tileSize - el.clientHeight / 2
+              tweener?.stop()
+              tweener = new Tween.Tween(x: el.scrollLeft, y: el.scrollTop)
+                .to {
+                    x: obj.pos[0] * rltiles.tileSize - el.clientWidth / 2
+                    y: obj.pos[1] * rltiles.tileSize - el.clientHeight / 2
+                  }, 500
+                .easing Tween.Easing.Quintic.Out
+                .onUpdate ->
+                  el.scrollLeft = @x
+                  el.scrollTop = @y
+                .start()
               vec2.copy lastPlayerScrollPos, obj.pos
 
         for y, row of diff.map

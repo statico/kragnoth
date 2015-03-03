@@ -22,6 +22,7 @@
     "random-ext": "^2.5.0",
     "rot.js": "https://github.com/ondras/rot.js/archive/master.tar.gz",
     "stylus": "^0.50.0",
+    "tween.js": "^0.14.0",
     "websocket": "^1.0.17"
   }
 }
