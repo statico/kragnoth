@@ -13,7 +13,7 @@ websocket = require 'websocket'
 {vec2} = require 'gl-matrix'
 
 {SparseMap, SparseMapList, DenseMap} = require './lib/map.coffee'
-{TILES} = require './lib/terrain.coffee'
+{TILES, WALKABLE_TILES} = require './lib/terrain.coffee'
 
 # TODO: Inject
 argv = commander
@@ -366,10 +366,12 @@ class World
       monster.lastTick = tick
 
     # computer what areas the player can see
-    diff = new SparseMap(@level.width, @level.height)
-    test = (x, y) => @level.terrain.get([x, y]) in [TILES.FLOOR, TILES.CORRIDOR, TILES.DOOR, TILES.STAIRCASE_UP, TILES.STAIRCASE_DOWN]
-    fov = new ROT.FOV.PreciseShadowcasting(test)
     pos = [0, 0]
+    diff = new SparseMap(@level.width, @level.height)
+    test = (x, y) =>
+      vec2.set pos, x, y
+      @level.terrain.get(pos) of WALKABLE_TILES
+    fov = new ROT.FOV.PreciseShadowcasting(test)
     for _, player of @playerActors
       [x, y] = player.pos
       fov.compute x, y, 10, (x, y, _, visible) =>
