@@ -24,7 +24,7 @@ html
       div(ng-show='connected').grid-cell
         div: strong {{ player.name }} - {{ levelName }}
         div Gold: {{ player.gold }}
-        div HP: {{ player.hp }}
+        div HP: {{ player.hp }} / {{ player.maxHp }}
         div Weapon: {{ player.weapon.name || 'empty-handed' }}
         hr
         div {{ player.items.length }} items

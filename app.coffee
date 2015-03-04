@@ -506,6 +506,7 @@ class Player extends Actor
       gold: @gold
       ap: @ap
       hp: @hp
+      maxHp: @maxHp
       weapon: @weapon?.toViewJSON()
     }
 
