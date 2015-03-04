@@ -185,47 +185,40 @@ class World
   simulate: (tickSpeed, tick) ->
     @messages = if tick is 1 then ['Welcome to Kragnoth'] else []
 
+    max = [@level.width - 1, @level.height - 1]
+
     updatePos = (actor, command, dir) =>
       delta = DIR_TO_VEC[dir] or ZERO
       next = [0, 0]
       vec2.add next, actor.pos, delta
-      vec2.min next, next, [@level.width - 1, @level.height - 1]
+      vec2.min next, next, max
       vec2.max next, next, ZERO
+
       tile = @level.terrain.get next
       pile = @level.piles.get next
+      occupants = @level.actors.get next
+      isMove = command in ['move', 'attack-move']
+      isAttack = command in ['attack-move', 'attack']
 
-      # Players can overlap players. Players cannot attack themselves or other players. Monsters
-      # cannot overlap players.
-      defender = null
-      allNeighbors = @level.actors.get next
-      numNeighbors = allNeighbors?.length or 0
-      numMonsterNeighbors = 0
-      numPlayerNeighbors = 0
-      if allNeighbors
-        for a in allNeighbors
-          if a.isPlayer
-            numPlayerNeighbors++
+      # 1. Players cannot attack themselves or other players.
+      # 2. Players can overlap players.
+      # 3. Monsters cannot overlap players.
+
+      if isAttack
+        candidates = (o for o in occupants when o.isPlayer != actor.isPlayer) if occupants
+        defender = candidates?[0]
+        solveAttack actor, defender if defender?
+
+      if isMove
+        if tile of WALKABLE_TILES
+          if actor.isPlayer
+            blockers = (o for o in occupants when not o.isPlayer) if occupants
           else
-            numMonsterNeighbors++
-            defender ?= a
+            blockers = occupants
+          if not blockers?.length
+            vec2.copy actor.pos, next
+            vec2.copy item.pos, next for item in actor.items
 
-      moved = false
-      if actor != defender
-        if command in ['move', 'attack-move']
-          if tile of WALKABLE_TILES
-            if (actor.isPlayer and numMonsterNeighbors is 0) or (not actor.isPlayer and numNeighbors is 0)
-              moved = true
-              vec2.copy actor.pos, next
-          if actor.isPlayer and pile?.length
-            @messages.push "There are items here: #{ (i.name for i in pile).join ', ' }"
-          if actor.isPlayer and defender and command != 'attack-move'
-            @messages.push "#{ defender.name } is in the way"
-        if command in ['attack-move', 'attack']
-          if defender
-            solveAttack actor, defender
-      if moved
-        for item in actor.items
-          vec2.copy item.pos, actor.pos
       return
 
     solveAttack = (attacker, defender) =>
