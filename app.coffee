@@ -212,7 +212,7 @@ class World
       moved = false
       if actor != defender
         if command in ['move', 'attack-move']
-          if tile in [TILES.FLOOR, TILES.CORRIDOR, TILES.DOOR, TILES.STAIRCASE_UP, TILES.STAIRCASE_DOWN]
+          if tile of WALKABLE_TILES
             if (actor.isPlayer and numMonsterNeighbors is 0) or (not actor.isPlayer and numNeighbors is 0)
               moved = true
               vec2.copy actor.pos, next
