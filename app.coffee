@@ -91,7 +91,7 @@ gameWSServer.on 'request', (req) ->
       if Object.keys(scheduler.players).length >= argv.numPlayers
         scheduler.start()
         conn.on 'close', ->
-          scheduler.world.gameOver = true
+          scheduler.world.gameOver = "A player has lost their connection."
 
 class Scheduler
   constructor: (@world) ->
@@ -124,7 +124,7 @@ class Scheduler
       diff = @world.simulate(@tickSpeed, @tick)
       if @world.gameOver
         console.log "Game over"
-        @send type: 'gameover', reason: "Your party has exited the dungeon. Goodbye!"
+        @send type: 'gameover', reason: @world.gameOver, messages: @world.messages
         return
       monsters = []
       items = []
@@ -158,7 +158,7 @@ class World
     @levels = [new Level(this, 1, 'level-1')]
     @levelIndex = 0
     @level = @levels[@levelIndex]
-    @gameOver = false
+    @gameOver = null
     @messages = null
 
     @playerConns = {}
@@ -173,12 +173,14 @@ class World
     @level.actors.add actor.pos, actor
 
   handlePlayerInput: (id, msg) ->
-    @playerActors[id].lastInput = msg
+    actor = @playerActors[id]
+    actor.lastInput = msg unless actor.isDead
 
   getGUID: ->
     return @_nextGUID++
 
   kill: (actor) ->
+    actor.isDead = true
     @level.actors.remove actor.pos, actor
     delete @level.monsters[actor.id]
 
@@ -269,7 +271,7 @@ class World
 
     goLevelUp = =>
       if @level.depth is 1
-        @gameOver = true
+        @gameOver = "All party members have left the dungeon. Goodbye!"
         @levelIndex = -1
         @level = null
       else
@@ -331,6 +333,9 @@ class World
               delete @level.items[item.id]
             else
               @messages.push "Can't use #{ item.name } as a weapon"
+
+    if (a for _, a of @playerActors when not a.isDead).length is 0
+      @gameOver = "All of the party members are dead!"
 
     return if @gameOver
 
@@ -477,6 +482,7 @@ class Actor
     @items = []
     @weapon = null
     @gold = 0
+    @isDead = false
 
 class Player extends Actor
   constructor: (@name) ->
@@ -501,6 +507,7 @@ class Player extends Actor
       hp: @hp
       maxHp: @maxHp
       weapon: @weapon?.toViewJSON()
+      isDead: @isDead
     }
 
 class Monster extends Actor

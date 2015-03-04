@@ -117,6 +117,7 @@ cncSocket.onmessage = (event) ->
       msg = JSON.parse event.data
 
       if msg.type is 'gameover'
+        uiService.addMessages msg.messages
         uiService.addMessages [msg.reason]
         uiService.setStatus 'Game Over'
 
@@ -138,6 +139,7 @@ cncSocket.onmessage = (event) ->
         uiService.addMessages(messages) if messages.length
 
         for pid, obj of players
+          continue if obj.isDead
           if pid not of playerAvatars
             playerAvatars[pid] = AVATARS.shift()
           if pid is playerId
