@@ -352,8 +352,7 @@ class World
     return if @gameOver
 
     for _, monster of @level.monsters
-      delta = (tick - monster.lastTick) * tickSpeed
-      continue unless delta >= 1000 / monster.speed
+      continue unless (tick - monster.lastTick) >= monster.speed
       command = monster.simulate(this)
       switch command?.command
         when 'move', 'attack-move', 'attack'
@@ -548,7 +547,7 @@ class Mosquito extends Monster
   constructor: ->
     super()
     @name = 'mosquito'
-    @speed = 10
+    @speed = 2
     @hp = 1
     @ap = 1
 
@@ -556,7 +555,7 @@ class Slug extends Monster
   constructor: ->
     super()
     @name = 'slug'
-    @speed = 1
+    @speed = 15
     @hp = 10
     @ap = 0
 
@@ -564,7 +563,7 @@ class Seeker extends Monster
   constructor: ->
     super()
     @name = 'seeker'
-    @speed = 3
+    @speed = 7
     @sightRadius = 5
     @hp = 10
     @ap = 2
