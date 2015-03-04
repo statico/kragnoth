@@ -56,8 +56,14 @@ angular.module('kragnoth', [])
         $rootScope.$broadcast 'update'
       setStatus: (@status) ->
         $rootScope.$broadcast 'update'
+      _send: (obj) ->
+        @socket.send JSON.stringify obj
       chooseItem: (item) ->
-        @socket.send JSON.stringify type: 'input', command: 'choose-item', id: item?.id
+        @_send type: 'input', command: 'choose-item', id: item?.id
+      togglePause: ->
+        @_send type: 'pause'
+      setSpeed: (speed) ->
+        @_send type: 'set-speed', speed: speed
   )
   .controller('UIController', ($rootScope, $scope, UIService) ->
     $rootScope.$on 'update', ->
@@ -68,6 +74,8 @@ angular.module('kragnoth', [])
       $scope.levelName = UIService.levelName
       $scope.status = UIService.status
       $scope.choose = (item) -> UIService.chooseItem(item)
+      $scope.togglePause = -> UIService.togglePause()
+      $scope.setSpeed = (speed) -> UIService.setSpeed(speed)
       $scope.$apply()
   )
 
@@ -120,6 +128,18 @@ cncSocket.onmessage = (event) ->
         uiService.addMessages msg.messages
         uiService.addMessages [msg.reason]
         uiService.setStatus 'Game Over'
+
+      if msg.type is 'status'
+        switch msg.subtype
+          when 'pause'
+            text = "Player #{ msg.playerId } paused the game"
+            uiService.setStatus 'Paused'
+          when 'resume'
+            text = "Player #{ msg.playerId } resumed the game"
+            uiService.setStatus null
+          when 'speed'
+            text = "Player #{ msg.playerId } set game speed to #{ msg.value }"
+        uiService.addMessages [text]
 
       if msg.type is 'level-init'
         {width, height, name, index} = msg
@@ -213,3 +233,4 @@ for key, dir of keys
   do (key, dir) ->
     Mousetrap.bind key, -> sendInput dir
 Mousetrap.bind ',', -> gameSend type: 'input', command: 'pickup'
+Mousetrap.bind 'space', -> uiService.togglePause()

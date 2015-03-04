@@ -103,8 +103,19 @@ class Scheduler
     @world.addPlayer playerId, conn
     conn.on 'message', (event) =>
       msg = JSON.parse if event.type is 'utf8' then event.utf8Data else event.binaryData
-      if msg.type is 'input'
-        @world.handlePlayerInput playerId, msg
+      switch msg.type
+        when 'input'
+          @world.handlePlayerInput playerId, msg
+        when 'pause'
+          if @timer
+            @send type: 'status', subtype: 'pause', playerId: playerId
+            @stop()
+          else
+            @send type: 'status', subtype: 'resume', playerId: playerId
+            @start()
+        when 'set-speed'
+          @tickSpeed = Math.min 3000, Math.max 100, Number(msg.speed or 100)
+          @send type: 'status', subtype: 'speed', value: @tickSpeed, playerId: playerId
   send: (obj) ->
     for playerId, conn of @players
       conn.sendUTF JSON.stringify obj
@@ -148,8 +159,9 @@ class Scheduler
       next = (start + @tickSpeed) - Date.now()
       @timer = setTimeout doTick, if next < 0 then 0 else next
     doTick()
-  end: ->
+  stop: ->
     clearTimeout @timer
+    @timer = null
 
 class World
   constructor: ->
