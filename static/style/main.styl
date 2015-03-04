@@ -33,7 +33,18 @@ body, img, canvas, *
   .old
     opacity: 0.5
 
+.status
+  animation: blink 2s infinite
+  -webkit-animation: blink 2s infinite
+
 #map
   border: 1px solid grey
 #map-container
   overflow: scroll
+
+@keyframes blink {
+  0% { opacity: 1.0 }
+  20% { opacity: 0.2 }
+  40% { opacity: 1.0 }
+  100% { opacity: 1.0 }
+}

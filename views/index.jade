@@ -18,7 +18,7 @@ html
 
     div(ng-controller='UIController', ng-cloak).grid.ui
       div.grid-cell.messages
-        h1(ng-show='status') {{ status }}
+        h1(ng-show='status').status {{ status }}
         div(ng-repeat='set in messages', ng-class='{"old": !$first}')
           div(ng-repeat='m in set') {{ m }}
       div(ng-show='connected').grid-cell
