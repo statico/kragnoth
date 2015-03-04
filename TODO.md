@@ -1,5 +1,4 @@
 # immediate TODO
-1. pause & speed adjust (remove monster speed-delta calculation)
 1. better animations
 1. amulet at bottom
 1. IS THE GAME FUN
