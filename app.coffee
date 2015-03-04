@@ -217,13 +217,14 @@ class World
       # 1. Players cannot attack themselves or other players.
       # 2. Players can overlap players.
       # 3. Monsters cannot overlap players.
+      # 4. If a player kills the defender, don't move onto the space afterwards.
 
       if isAttack
         candidates = (o for o in occupants when o.isPlayer != actor.isPlayer) if occupants
         defender = candidates?[0]
         solveAttack actor, defender if defender?
 
-      if isMove
+      if isMove and not defender
         if tile of WALKABLE_TILES
           if actor.isPlayer
             blockers = (o for o in occupants when not o.isPlayer) if occupants
