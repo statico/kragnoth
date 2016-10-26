@@ -1,4 +1,4 @@
-#!./node_modules/.bin/coffee
+#!/usr/bin/env coffee
 
 require 'coffee-script/register' # for node-inspector
 
@@ -27,7 +27,7 @@ argv = commander
 app = express()
 app.use stylus.middleware src: __dirname + '/static/style'
 app.use express.static __dirname + '/static'
-app.set 'view engine', 'jade'
+app.set 'view engine', 'pug'
 app.get '/main.js', browserify('./lib/main.coffee', transform: ['coffeeify'])
 app.get '/', (req, res) -> res.render 'index', argv: argv
 
