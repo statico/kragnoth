@@ -1,11 +1,10 @@
-# Krag'noth: Valley of the Beast
-(or some equally as stupid name for an RPG)
+# krag'noth
+
+![](http://i.imgur.com/MM4y7U2.gif)
 
 VERY WORK IN PROGRESS / PROOF OF CONCEPT
 
-DO NOT SHARE
-
-## Getting started with local development
+## Getting started
 - `npm install`
 - `npm install -g nodemon nodeunit`
 - `npm test`
