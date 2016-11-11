@@ -1,0 +1,7 @@
+node_modules
+npm-debug.log
+.env
+public/third-party
+secrets.json
+old
+experiments

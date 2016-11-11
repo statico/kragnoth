@@ -17,8 +17,9 @@ websocket = require 'websocket'
 
 # TODO: Inject
 argv = commander
-  .option('-n, --numPlayers <n>', "Number of players per party", parseInt, 2)
-  .option('-h, --host <host>', "Bind port to this", String, '127.0.0.1')
+  .option('-p, --numPlayers <n>', "Number of players per party", parseInt, 2)
+  .option('-h, --host <host>', "Bind port to this", String, '0.0.0.0')
+  .option('--publicHost <host>', "Servers will be told to connect here", String, 'localhost')
   .option('--webPort <port>', "Main web UI port", parseInt, 9000)
   .option('--cncPort <port>', "Command and control port", parseInt, 9001)
   .option('--gamePort <port>', "Game port", parseInt, 9002)
@@ -57,7 +58,7 @@ cncWSServer.on 'request', (req) ->
         for playerId, playerConn of cncLobby
           console.log "Telling player #{ playerId } to start game #{ gameId }"
           playerConn.sendUTF JSON.stringify
-            type: 'connect', url: "ws://#{ argv.host }:#{ argv.gamePort }/", gameId: gameId
+            type: 'connect', url: "ws://#{ argv.publicHost }:#{ argv.gamePort }/", gameId: gameId
           delete cncLobby[playerId]
       else
         cncLobby[playerId] = conn
